@@ -1,0 +1,1844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>PPETaxo — PPE Product Classifier</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+:root{--bg:#0f0f11;--surface:#18181c;--surface2:#202026;--border:#2a2a32;--border2:#38383f;--accent:#e74c3c;--accent2:#f39c12;--text:#f0eeff;--muted:#7b7a8e;--success:#27ae60;--warn:#f39c12;--danger:#e74c3c;--mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6}
+.header{border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;background:var(--bg);z-index:100}
+.logo{font-family:var(--mono);font-size:15px;font-weight:500;color:var(--accent);letter-spacing:-.02em}
+.logo span{color:var(--muted)}
+.api-area{display:flex;align-items:center;gap:8px}
+.api-area input{font-family:var(--mono);font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;width:240px;outline:none}
+.api-area input:focus{border-color:var(--accent)}
+.api-save{font-size:12px;font-family:var(--mono);padding:6px 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:500}
+.api-save:hover{background:var(--accent2);color:var(--bg)}
+.api-status{font-size:11px;font-family:var(--mono)}
+.api-status.ok{color:var(--success)}.api-status.no{color:var(--muted)}
+.main{max-width:1100px;margin:0 auto;padding:2rem}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:2rem}
+.tab{padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;font-family:var(--mono);letter-spacing:.02em}
+.tab:hover{color:var(--text)}.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.field label{display:block;font-size:11px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+.field input,.field textarea,.field select{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--sans);font-size:14px;padding:10px 12px;outline:none;transition:border-color .15s}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--accent)}
+.field select option{background:var(--surface2)}
+.field textarea{min-height:80px;resize:vertical}
+.btn-primary{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;font-family:var(--sans);cursor:pointer;transition:background .15s;letter-spacing:.01em}
+.btn-primary:hover{background:#c0392b}.btn-primary:disabled{background:var(--border);color:var(--muted);cursor:not-allowed}
+.result-box{margin-top:1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.result-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface2)}
+.result-category{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--accent)}
+.conf-badge{font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:99px;font-weight:500;text-transform:uppercase;letter-spacing:.06em}
+.conf-high{background:rgba(39,174,96,.15);color:var(--success)}
+.conf-medium{background:rgba(243,156,18,.15);color:var(--warn)}
+.conf-low{background:rgba(231,76,60,.15);color:var(--danger)}
+.result-reasoning{padding:10px 16px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--border);font-style:italic}
+.attr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1px;background:var(--border)}
+.attr-cell{background:var(--surface);padding:12px 14px}.attr-cell:hover{background:var(--surface2)}
+.attr-key{font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.attr-value{font-size:13px;font-weight:500;color:var(--text)}
+.attr-value.null-val{color:var(--border2);font-style:italic;font-weight:400;font-size:12px}
+.drop-zone{border:2px dashed var(--border2);border-radius:12px;padding:3rem;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;margin-bottom:1rem}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(231,76,60,.05)}
+.drop-icon{font-size:32px;margin-bottom:12px;opacity:.5}
+.drop-title{font-size:15px;font-weight:500;margin-bottom:6px}
+.drop-sub{font-size:12px;color:var(--muted);font-family:var(--mono)}
+.format-badges{display:flex;gap:6px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+.fmt-badge{font-size:10px;font-family:var(--mono);padding:3px 8px;border-radius:4px;border:1px solid var(--border2);color:var(--muted)}
+.fmt-pdf{border-color:rgba(231,76,60,.4);color:#f07070;background:rgba(231,76,60,.08)}
+.fmt-csv{border-color:rgba(39,174,96,.4);color:var(--success);background:rgba(39,174,96,.08)}
+.fmt-xlsx{border-color:rgba(243,156,18,.4);color:var(--accent2);background:rgba(243,156,18,.08)}
+.bulk-btn{padding:9px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:all .15s;border:1px solid var(--border2);background:var(--surface);color:var(--text)}
+.bulk-btn:hover{border-color:var(--accent);color:var(--accent)}
+.bulk-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.bulk-btn.primary:hover{background:#c0392b}
+.bulk-btn.success{background:rgba(39,174,96,.15);border-color:var(--success);color:var(--success)}
+.bulk-btn.danger{background:rgba(231,76,60,.1);border-color:var(--danger);color:var(--danger)}
+.bulk-btn:disabled{opacity:.4;cursor:not-allowed}
+.progress-bar{height:3px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:1rem}
+.progress-fill{height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.progress-label{font-size:11px;font-family:var(--mono);color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between}
+.bulk-controls{display:flex;gap:10px;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead tr{background:var(--surface2)}
+th{padding:10px 12px;text-align:left;font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.status-cell{display:flex;align-items:center;gap:6px}
+.dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dot-done{background:var(--success)}.dot-pending{background:var(--border2)}
+.dot-error{background:var(--danger)}.dot-running{background:var(--accent);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.pdf-status{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:1rem;font-family:var(--mono);font-size:12px}
+.pdf-status-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.pdf-step{display:flex;align-items:center;gap:8px;padding:4px 0;color:var(--muted)}
+.pdf-step.active{color:var(--accent)}.pdf-step.done{color:var(--success)}.pdf-step.error{color:var(--danger)}
+.pdf-step-icon{font-size:12px;width:16px;text-align:center;flex-shrink:0}
+.error-msg{color:var(--danger);font-size:12px;font-family:var(--mono);margin-top:10px;padding:10px 14px;background:rgba(231,76,60,.08);border-radius:8px;border:1px solid rgba(231,76,60,.2)}
+/* taxonomy proposal */
+.tax-proposal{background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:1.25rem;margin-bottom:1rem}
+.tax-proposal-title{font-family:var(--mono);font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+.attr-tag-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.attr-tag{display:inline-flex;align-items:center;gap:4px;background:rgba(231,76,60,.15);color:var(--accent);border:1px solid rgba(231,76,60,.3);border-radius:6px;padding:4px 10px;font-size:12px;font-family:var(--mono)}
+.attr-tag .remove{cursor:pointer;color:var(--muted);font-size:14px;line-height:1}.attr-tag .remove:hover{color:var(--danger)}
+.add-attr-row{display:flex;gap:8px;margin-bottom:12px}
+.add-attr-row input{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 10px;outline:none}
+.add-attr-row input:focus{border-color:var(--accent)}
+.add-attr-row button{padding:6px 12px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--accent);font-family:var(--mono);font-size:12px;cursor:pointer}
+.add-attr-row button:hover{border-color:var(--accent)}
+/* knowledge base */
+.kb-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px}
+.kb-card-header{background:var(--surface2);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.kb-cat-name{font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:500}
+.kb-card-body{padding:12px 14px}
+.kb-attr-list{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.kb-pill{display:inline-block;background:rgba(231,76,60,.12);color:var(--accent);border-radius:4px;padding:2px 8px;font-size:11px;font-family:var(--mono)}
+.kb-meta{font-size:10px;color:var(--muted);font-family:var(--mono)}
+.hint-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:1rem;line-height:1.7}
+.hint-box strong{color:var(--text2,var(--text))}
+.kb-rule-row{display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;font-size:11px;font-family:var(--mono);padding:4px 8px;background:rgba(231,76,60,.06);border-radius:4px;border-left:2px solid var(--accent)}
+.section-title{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+.toggle-row{display:flex;gap:12px;align-items:center;margin-bottom:1rem;flex-wrap:wrap}
+.toggle-row label{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-family:var(--mono)}
+.toggle-row input[type=radio]{accent-color:var(--accent);width:14px;height:14px}
+.template-section{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.template-info .template-title{font-size:13px;font-weight:500;margin-bottom:4px}
+.template-info .template-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+input[type=file]{display:none}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">PPE<span>Taxo</span></div>
+  <div class="api-area">
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-..."/>
+    <button class="api-save" onclick="saveKey()">Save key</button>
+    <span class="api-status no" id="apiStatus">no key</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('single')">Single item</div>
+    <div class="tab" onclick="switchTab('bulk')">Bulk import</div>
+    <div class="tab" onclick="switchTab('kb')">Knowledge base</div>
+  </div>
+
+  <!-- SINGLE -->
+  <div class="tab-panel active" id="tab-single">
+    <div class="form-grid">
+      <div class="field">
+        <label>Item number</label>
+        <input type="text" id="s-partnum" placeholder="e.g. PIP-34-C232"/>
+      </div>
+      <div class="field">
+        <label>Category — type it (AI adapts)</label>
+        <input type="text" id="s-category" value="Gloves" list="kb-cats-list"/>
+        <datalist id="kb-cats-list"></datalist>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:16px">
+      <label>Product name / description</label>
+      <textarea id="s-desc" placeholder="e.g. MaxiFlex Nitrile Coated Work Gloves - Cut Resistant Level A2"></textarea>
+    </div>
+    <button class="btn-primary" id="singleBtn" onclick="classifySingle()">Classify product</button>
+    <div id="single-error"></div>
+    <div id="single-result"></div>
+  </div>
+
+  <!-- BULK -->
+  <div class="tab-panel" id="tab-bulk">
+    <div class="template-section">
+      <div class="template-info">
+        <div class="template-title">Download import template</div>
+        <div class="template-sub">CSV: item_number, product_name, description, extra_info, category (optional)</div>
+      </div>
+      <button class="bulk-btn" onclick="downloadTemplate()">Download template</button>
+    </div>
+
+    <!-- Category row -->
+    <div style="margin-bottom:1rem">
+      <div class="field">
+        <label>Category for this PDF / file</label>
+        <input type="text" id="b-category" value="Gloves" list="kb-cats-list2"/>
+        <datalist id="kb-cats-list2"></datalist>
+      </div>
+    </div>
+
+    <div class="drop-zone" id="dropZone"
+      onclick="document.getElementById('fileInput').click()"
+      ondragover="event.preventDefault();this.classList.add('drag-over')"
+      ondragleave="this.classList.remove('drag-over')"
+      ondrop="handleDrop(event)">
+      <div class="drop-icon">⬆</div>
+      <div class="drop-title">Drop your file here</div>
+      <div class="drop-sub">or click to browse</div>
+      <div class="format-badges">
+        <span class="fmt-badge fmt-pdf">PDF</span>
+        <span class="fmt-badge fmt-csv">CSV</span>
+        <span class="fmt-badge fmt-xlsx">XLSX / XLS</span>
+      </div>
+    </div>
+    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.pdf" onchange="handleFile(this.files[0])"/>
+
+    <!-- Category selection for bulk processing -->
+    <div id="bulk-category-selector" style="display:none;margin:15px 0;padding:15px;background:var(--surface);border:1px solid var(--border);border-radius:10px">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;font-family:var(--mono)">Target Category 
+        <span id="cat-count-debug" style="font-size:11px;font-weight:normal;color:var(--muted)"></span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <select id="bulk-category-select" style="flex:1;padding:10px 12px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:13px;position:static">
+          <option value="">Select a category from your knowledge base...</option>
+        </select>
+        <button class="bulk-btn primary" id="apply-category-btn" onclick="applyCategoryTaxonomy()" style="padding:10px 20px;font-size:13px" disabled>Apply</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;font-family:var(--mono);line-height:1.4">
+        📦 Select a category and click Apply to use its exact taxonomy from your knowledge base<br>
+        🔍 Leave blank to auto-generate taxonomy from the PDF content
+      </div>
+    </div>
+
+    <!-- Taxonomy proposal box -->
+    <div id="tax-proposal-box" style="display:none">
+      <div class="tax-proposal">
+        <div class="tax-proposal-title">Proposed taxonomy — <span id="tax-prop-cat"></span> &nbsp;<span style="color:var(--muted);font-weight:400">Review and edit before classifying</span></div>
+        <div class="attr-tag-row" id="attr-tag-row"></div>
+        <div class="add-attr-row">
+          <input type="text" id="new-attr-input" placeholder="Add attribute..." onkeydown="if(event.key==='Enter')addAttrTag()"/>
+          <button onclick="addAttrTag()">+ Add</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="bulk-btn primary" onclick="approveAndProceed()">Approve & classify</button>
+          <button class="bulk-btn success" onclick="saveToKB()">Save to knowledge base</button>
+          <button class="bulk-btn" onclick="regenerateTaxonomy()">Regenerate</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page range queue — shows after PDF is loaded -->
+    <div id="page-range-box" style="display:none;background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:1.25rem;margin-bottom:1rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em">PDF loaded — <span id="pdf-page-count"></span></span>
+        <span style="font-size:11px;font-family:var(--mono);color:var(--muted)">Add ranges to the queue, then run all at once</span>
+      </div>
+
+      <!-- Add to queue row -->
+      <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap">
+        <div class="field" style="margin:0">
+          <label>Quick select</label>
+          <select id="page-range-select" style="width:160px" onchange="onPageRangeSelect()"></select>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;padding-bottom:1px">
+          <div class="field" style="margin:0">
+            <label>From</label>
+            <input type="number" id="page-from" min="1" value="1" style="padding:8px 10px;width:70px"/>
+          </div>
+          <span style="color:var(--muted);font-family:var(--mono);font-size:12px;padding-top:20px">to</span>
+          <div class="field" style="margin:0">
+            <label>To</label>
+            <input type="number" id="page-to" min="1" value="1" style="padding:8px 10px;width:70px"/>
+          </div>
+        </div>
+        <button class="bulk-btn" style="align-self:flex-end" onclick="addToQueue()">+ Add to queue</button>
+      </div>
+
+      <!-- Queue list -->
+      <div id="page-queue-list" style="margin-bottom:12px;display:none">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Queue</div>
+        <div id="queue-items" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
+      </div>
+
+      <!-- Run queue button -->
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="bulk-btn primary" id="run-queue-btn" onclick="runQueue()" style="display:none">Run queue</button>
+        <button class="bulk-btn" onclick="addToQueue(true)" style="display:none" id="run-single-btn">Extract these pages now</button>
+        <span id="queue-status" style="font-size:11px;font-family:var(--mono);color:var(--muted)">Add a page range above</span>
+      </div>
+    </div>
+
+    <!-- PDF status -->
+    <div id="pdf-status-box" style="display:none">
+      <div class="pdf-status">
+        <div class="pdf-status-title">PDF processing</div>
+        <div class="pdf-step" id="pstep-extract"><span class="pdf-step-icon">○</span> Reading PDF pages</div>
+        <div class="pdf-step" id="pstep-ocr"><span class="pdf-step-icon">○</span> OCR — converting scanned pages to text</div>
+        <div class="pdf-step" id="pstep-tax"><span class="pdf-step-icon">○</span> Building taxonomy</div>
+        <div class="pdf-step" id="pstep-parse"><span class="pdf-step-icon">○</span> Parsing product rows with AI</div>
+        <div class="pdf-step" id="pstep-load"><span class="pdf-step-icon">○</span> Loading into classifier</div>
+      </div>
+    </div>
+
+    <div id="bulk-controls" style="display:none">
+      <div class="progress-label">
+        <span id="prog-label">Ready</span>
+        <span id="prog-count"></span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+      <div class="bulk-controls">
+        <button class="bulk-btn primary" id="runBulkBtn" onclick="runBulk()">Run classification</button>
+        <button class="bulk-btn success" id="exportBtn" onclick="exportResults()" style="display:none">Export Excel</button>
+        <button class="bulk-btn" id="htmlBtn" onclick="generateHTML()" style="display:none;border-color:var(--accent2);color:var(--accent2)">Generate HTML Tables</button>
+        <button class="bulk-btn" onclick="resetBulk()">Clear</button>
+        <span id="bulk-summary" style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-left:auto"></span>
+      </div>
+      <div class="table-wrap">
+        <table id="bulkTable">
+          <thead><tr id="bulk-thead"><th>#</th><th>Item Number</th><th>Product Name</th><th>Status</th><th>Category</th><th>Confidence</th></tr></thead>
+          <tbody id="bulkBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- KNOWLEDGE BASE -->
+  <div class="tab-panel" id="tab-kb">
+    <div class="hint-box">
+      The knowledge base is <strong>permanent</strong> — it never gets deleted when the app is updated. Every taxonomy you approve is stored here. When you work on a category again, the app loads it instantly instead of re-building from scratch.
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center">
+      <button class="bulk-btn primary" onclick="showAddKB()">+ Add manually</button>
+      <button class="bulk-btn" onclick="downloadKBTemplate()">Download template</button>
+      <button class="bulk-btn success" onclick="exportKB()">Export KB to Excel</button>
+      <button class="bulk-btn" onclick="document.getElementById('kb-import-input').click()">Import from Excel</button>
+      <input type="file" id="kb-import-input" accept=".xlsx,.xls" style="display:none" onchange="importKB(this.files[0])"/>
+      <span style="font-size:11px;font-family:var(--mono);color:var(--muted)" id="kb-count"></span>
+    </div>
+    <div id="add-kb-form" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem;margin-bottom:1.5rem">
+      <div class="section-title">New category</div>
+      <div class="form-grid" style="margin-bottom:10px">
+        <div class="field"><label>Category name</label><input type="text" id="kb-add-cat" placeholder="e.g. Cut-Resistant Gloves"/></div>
+        <div class="field"><label>Attributes (comma-separated)</label><input type="text" id="kb-add-attrs" placeholder="e.g. Type, Cut Level, Coating, Color, Cuff Style"/></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="bulk-btn primary" onclick="addKBManual()">Save</button>
+        <button class="bulk-btn" onclick="document.getElementById('add-kb-form').style.display='none'">Cancel</button>
+      </div>
+    </div>
+    <div id="kb-list"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+// ── Storage keys ─────────────────────────────────────────────────────────────
+const KB_KEY   = 'ppetaxo_kb_v1';      // knowledge base — NEVER deleted on rebuild
+const API_KEY  = 'ppetaxo_key';
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let apiKey   = localStorage.getItem(API_KEY) || '';
+let bulkRows = [], bulkResults = [], running = false;
+let currentAttrs   = [];   // active taxonomy attributes for current session
+let currentCat     = '';
+let pdfRawText     = '';
+let pdfChunks      = [];
+let pdfChunkIdx    = 0;
+let pdfAllProducts = [];
+
+// ── Knowledge base ─────────────────────────────────────────────────────────────
+function loadKB(){ return JSON.parse(localStorage.getItem(KB_KEY)||'{}') }
+function saveKB(kb){ localStorage.setItem(KB_KEY, JSON.stringify(kb)) }
+
+// Pre-populate KB with basic PPE categories on first load
+function initKB(){
+  const kb = loadKB();
+  if(Object.keys(kb).length === 0){
+    // First time - populate with basic PPE categories
+    const defaultCategories = {
+      'Gloves': {
+        attrs: ['Type', 'Cut Level', 'Coating', 'Color', 'Cuff Style', 'Material', 'Application'],
+        saved: new Date().toISOString()
+      },
+      'Hard Hats': {
+        attrs: ['Type', 'Class', 'Style', 'Color', 'Suspension', 'Ratchet', 'Material'],
+        saved: new Date().toISOString()
+      },
+      'Safety Glasses': {
+        attrs: ['Type', 'Lens Color', 'Frame Color', 'Coating', 'Style', 'UV Protection', 'Material'],
+        saved: new Date().toISOString()
+      },
+      'Coveralls': {
+        attrs: ['Type', 'Material', 'Color', 'Hood', 'Closure', 'Elastic', 'Application'],
+        saved: new Date().toISOString()
+      },
+      'Safety Footwear': {
+        attrs: ['Type', 'Toe Protection', 'Sole Material', 'Height', 'Color', 'Electrical Hazard', 'Waterproof'],
+        saved: new Date().toISOString()
+      }
+    };
+    saveKB(defaultCategories);
+  }
+}
+
+function getKBTaxonomy(cat){
+  const kb = loadKB();
+  const key = cat.trim().toLowerCase();
+  for(const k in kb){ if(k.toLowerCase()===key) return kb[k].attrs; }
+  return null;
+}
+
+function saveKBEntry(cat, attrs, types){
+  const kb = loadKB();
+  kb[cat.trim()] = { 
+    attrs, 
+    types: types || [], 
+    saved: new Date().toISOString(),
+    rules: kb[cat.trim()]?.rules || []  // Keep existing rules
+  };
+  saveKB(kb);
+  renderKB();
+  populateCatDatalist();
+}
+
+function renderKB(){
+  const kb = loadKB();
+  const keys = Object.keys(kb);
+  document.getElementById('kb-count').textContent = keys.length + ' categories saved';
+  if(!keys.length){
+    document.getElementById('kb-list').innerHTML = '<p style="color:var(--muted);font-size:13px;font-family:var(--mono)">No categories saved yet. Import your knowledge base or classify some products and click "Save to knowledge base" to build it up.</p>';
+    return;
+  }
+  document.getElementById('kb-list').innerHTML = keys.map(cat => {
+    const entry = kb[cat];
+    const pills = entry.attrs.map(a=>`<span class="kb-pill">${a}</span>`).join('');
+    const date = entry.saved ? new Date(entry.saved).toLocaleDateString() : '';
+    const rules = entry.rules || [];
+    const types = entry.types || [];
+    
+    const rulesHtml = rules.length ? `
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+        <div style="font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Correction Rules</div>
+        ${rules.map((r,i)=>`<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;font-size:11px;font-family:var(--mono)">
+          <span style="color:var(--accent)">→</span>
+          <span style="color:var(--text);flex:1;line-height:1.5">${r}</span>
+          <span onclick="removeKBRule('${cat}',${i})" style="cursor:pointer;color:var(--muted);font-size:13px;flex-shrink:0">×</span>
+        </div>`).join('')}
+      </div>` : '';
+      
+    const typesHtml = types.length ? `
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+        <div style="font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Valid Types (${types.length})</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">
+          ${types.slice(0,8).map(t=>`<span style="font-size:10px;font-family:var(--mono);background:rgba(231,76,60,.1);color:var(--accent);border-radius:3px;padding:2px 6px">${t}</span>`).join('')}
+          ${types.length > 8 ? `<span style="font-size:10px;color:var(--muted);font-family:var(--mono)">+${types.length-8} more</span>` : ''}
+        </div>
+      </div>` : '';
+    
+    return `<div class="kb-card">
+      <div class="kb-card-header">
+        <span class="kb-cat-name">${cat}</span>
+        <div style="display:flex;gap:6px">
+          <button class="bulk-btn" style="padding:4px 10px;font-size:11px" onclick="editKBEntry('${cat}')">Edit</button>
+          <button class="bulk-btn danger" style="padding:4px 10px;font-size:11px" onclick="deleteKBEntry('${cat}')">Delete</button>
+        </div>
+      </div>
+      <div class="kb-card-body">
+        <div class="kb-attr-list">${pills}</div>
+        <div class="kb-meta">${entry.attrs.length} attributes${types.length ? ` · ${types.length} types` : ''} · saved ${date}</div>
+        ${typesHtml}
+        ${rulesHtml}
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <input type="text" id="rule-input-${cat.replace(/\s+/g,'_')}" placeholder="Add correction rule e.g. Type = specific function like Welding Glove not generic Glove" style="flex:1;font-size:11px;padding:5px 8px;background:var(--bg);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono)" onkeydown="if(event.key==='Enter')addKBRule('${cat}')"/>
+          <button class="bulk-btn" style="padding:4px 10px;font-size:11px;flex-shrink:0" onclick="addKBRule('${cat}')">+ Rule</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function populateCatDatalist(){
+  const kb = loadKB();
+  const cats = Object.keys(kb).sort();
+  
+  // Populate knowledge base datalists
+  ['kb-cats-list','kb-cats-list2'].forEach(id=>{
+    const dl = document.getElementById(id);
+    if(dl) dl.innerHTML = cats.map(c=>`<option value="${c}">`).join('');
+  });
+  
+  // Populate bulk category selector dropdown
+  const bulkSelect = document.getElementById('bulk-category-select');
+  if(bulkSelect){
+    // Clear and rebuild all options
+    bulkSelect.innerHTML = '<option value="">Select a category from your knowledge base...</option>';
+    
+    // Add all categories from knowledge base
+    cats.forEach(cat => {
+      const option = document.createElement('option');
+      option.value = cat;
+      option.textContent = cat;
+      bulkSelect.appendChild(option);
+    });
+    
+    // Add change listener to enable/disable Apply button
+    bulkSelect.onchange = updateApplyButton;
+    
+    // Update debug counter
+    const debugSpan = document.getElementById('cat-count-debug');
+    if(debugSpan){
+      debugSpan.textContent = `(${cats.length} available)`;
+    }
+    
+    // Update Apply button state
+    updateApplyButton();
+    
+    console.log(`Populated bulk selector with ${cats.length} categories:`, cats);
+  }
+}
+
+function showAddKB(){ document.getElementById('add-kb-form').style.display='block'; }
+
+function addKBManual(){
+  const cat = document.getElementById('kb-add-cat').value.trim();
+  const attrs = document.getElementById('kb-add-attrs').value.split(',').map(a=>a.trim()).filter(Boolean);
+  if(!cat||!attrs.length){ alert('Category name and at least one attribute required.'); return; }
+  saveKBEntry(cat, attrs);
+  document.getElementById('kb-add-cat').value='';
+  document.getElementById('kb-add-attrs').value='';
+  document.getElementById('add-kb-form').style.display='none';
+}
+
+function deleteKBEntry(cat){
+  if(!confirm(`Delete taxonomy for "${cat}"?`)) return;
+  const kb = loadKB();
+  delete kb[cat];
+  saveKB(kb);
+  renderKB();
+  populateCatDatalist();
+}
+
+function addKBRule(cat){
+  const inputId = 'rule-input-' + cat.replace(/\s+/g,'_');
+  const inp = document.getElementById(inputId);
+  if(!inp) return;
+  const rule = inp.value.trim();
+  if(!rule) return;
+  const kb = loadKB();
+  if(!kb[cat]) return;
+  if(!kb[cat].rules) kb[cat].rules = [];
+  kb[cat].rules.push(rule);
+  saveKB(kb);
+  inp.value = '';
+  renderKB();
+}
+
+function removeKBRule(cat, idx){
+  const kb = loadKB();
+  if(!kb[cat] || !kb[cat].rules) return;
+  kb[cat].rules.splice(idx, 1);
+  saveKB(kb);
+  renderKB();
+}
+
+function editKBEntry(cat){
+  const kb = loadKB();
+  const entry = kb[cat];
+  document.getElementById('kb-add-cat').value = cat;
+  document.getElementById('kb-add-attrs').value = entry.attrs.join(', ');
+  document.getElementById('add-kb-form').style.display='block';
+  // Remove old entry when saving
+  document.getElementById('add-kb-form').dataset.editingCat = cat;
+}
+
+// ── KB Import/Export ──────────────────────────────────────────────────────────
+function downloadKBTemplate(){
+  const wb = XLSX.utils.book_new();
+  
+  // Sheet 1: Categories and Attributes
+  const categoriesData = [
+    ['Category', 'Attributes (comma-separated)'],
+    ['Gloves', 'Type,Cut Level,Coating,Color,Material,Cuff Style,Application'],
+    ['Jackets', 'Type,Color,Material,Hood,Closure,Application'],
+    ['Safety Glasses', 'Type,Lens Color,Frame Color,Coating,Style,UV Protection'],
+    ['Hard Hats', 'Type,Class,Style,Color,Suspension,Ratchet'],
+    ['Safety Footwear', 'Type,Toe Protection,Sole Material,Height,Color,Electrical Hazard']
+  ];
+  const ws1 = XLSX.utils.aoa_to_sheet(categoriesData);
+  ws1['!cols'] = [{wch:20}, {wch:60}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Categories');
+  
+  // Sheet 2: Correction Rules (optional)
+  const rulesData = [
+    ['Category', 'Correction Rule'],
+    ['Gloves', 'Type = specific function like Welding Glove or Driver Glove not generic Glove'],
+    ['Jackets', 'Type = short terms like Bomber not Bomber Jacket'],
+    ['', '']
+  ];
+  const ws2 = XLSX.utils.aoa_to_sheet(rulesData);
+  ws2['!cols'] = [{wch:20}, {wch:80}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Rules');
+  
+  XLSX.writeFile(wb, 'ppetaxo_kb_template.xlsx');
+}
+
+function exportKB(){
+  const kb = loadKB();
+  const wb = XLSX.utils.book_new();
+  
+  // Sheet 1: Categories and Attributes
+  const categoriesData = [['Category', 'Attributes (comma-separated)']];
+  Object.keys(kb).forEach(cat => {
+    categoriesData.push([cat, kb[cat].attrs.join(',')]);
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet(categoriesData);
+  ws1['!cols'] = [{wch:20}, {wch:60}];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Categories');
+  
+  // Sheet 2: Correction Rules
+  const rulesData = [['Category', 'Correction Rule']];
+  Object.keys(kb).forEach(cat => {
+    const rules = kb[cat].rules || [];
+    if(rules.length){
+      rules.forEach(rule => {
+        rulesData.push([cat, rule]);
+      });
+    }
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet(rulesData);
+  ws2['!cols'] = [{wch:20}, {wch:80}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Rules');
+  
+  // Sheet 3: Type Values
+  const typesData = [['Category', 'Type']];
+  Object.keys(kb).forEach(cat => {
+    const types = kb[cat].types || [];
+    if(types.length){
+      types.forEach(type => {
+        typesData.push([cat, type]);
+      });
+    }
+  });
+  const ws3 = XLSX.utils.aoa_to_sheet(typesData);
+  ws3['!cols'] = [{wch:25}, {wch:35}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Types');
+  
+  const date = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `ppetaxo_kb_export_${date}.xlsx`);
+}
+
+async function importKB(file){
+  if(!file) return;
+  
+  try {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      
+      // Read Categories sheet
+      if(!wb.SheetNames.includes('Categories')){
+        alert('Excel file must have a "Categories" sheet'); return;
+      }
+      
+      const categoriesSheet = wb.Sheets['Categories'];
+      const categoriesData = XLSX.utils.sheet_to_json(categoriesSheet, {defval:''});
+      
+      const kb = loadKB();
+      let imported = 0;
+      
+      // Process categories
+      categoriesData.forEach(row => {
+        const cat = row['Category']?.trim();
+        const attrsStr = row['Attributes (comma-separated)']?.trim();
+        
+        if(cat && attrsStr){
+          const attrs = attrsStr.split(',').map(a=>a.trim()).filter(Boolean);
+          if(attrs.length > 0){
+            kb[cat] = { 
+              attrs, 
+              types: [],  // Will be populated from Types sheet
+              saved: new Date().toISOString(),
+              rules: kb[cat]?.rules || []  // Keep existing rules
+            };
+            imported++;
+          }
+        }
+      });
+      
+      // Read Types sheet if exists
+      if(wb.SheetNames.includes('Types')){
+        const typesSheet = wb.Sheets['Types'];
+        const typesData = XLSX.utils.sheet_to_json(typesSheet, {defval:''});
+        
+        typesData.forEach(row => {
+          const cat = row['Category']?.trim();
+          const type = row['Type']?.trim();
+          
+          if(cat && type && kb[cat]){
+            if(!kb[cat].types) kb[cat].types = [];
+            // Only add if type doesn't already exist
+            if(!kb[cat].types.includes(type)){
+              kb[cat].types.push(type);
+            }
+          }
+        });
+      }
+      
+      // Read Rules sheet if exists
+      if(wb.SheetNames.includes('Rules')){
+        const rulesSheet = wb.Sheets['Rules'];
+        const rulesData = XLSX.utils.sheet_to_json(rulesSheet, {defval:''});
+        
+        rulesData.forEach(row => {
+          const cat = row['Category']?.trim();
+          const rule = row['Correction Rule']?.trim();
+          
+          if(cat && rule && kb[cat]){
+            if(!kb[cat].rules) kb[cat].rules = [];
+            // Only add if rule doesn't already exist
+            if(!kb[cat].rules.includes(rule)){
+              kb[cat].rules.push(rule);
+            }
+          }
+        });
+      }
+      
+      saveKB(kb);
+      renderKB();
+      populateCatDatalist();
+      
+      // Count types imported
+      let totalTypes = 0;
+      Object.values(kb).forEach(entry => {
+        if(entry.types) totalTypes += entry.types.length;
+      });
+      
+      alert(`Successfully imported:\n- ${imported} categories\n- ${totalTypes} type values\n- Correction rules integrated`);
+      
+      // Reset file input
+      document.getElementById('kb-import-input').value = '';
+    };
+    
+    reader.readAsArrayBuffer(file);
+    
+  } catch(err) {
+    alert('Error reading Excel file: ' + err.message);
+  }
+}
+
+// ── API ───────────────────────────────────────────────────────────────────────
+function saveKey(){
+  const k = document.getElementById('apiKeyInput').value.trim();
+  if(!k) return;
+  apiKey = k;
+  localStorage.setItem(API_KEY, k);
+  document.getElementById('apiStatus').textContent = 'key saved';
+  document.getElementById('apiStatus').className = 'api-status ok';
+}
+
+async function callClaude(system, userMsg, maxTokens=1000){
+  if(!apiKey) apiKey = localStorage.getItem(API_KEY)||'';
+  if(!apiKey) throw new Error('No API key — paste your Anthropic key in the header and click Save key.');
+  const res = await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body: JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:maxTokens,system,messages:[{role:'user',content:userMsg}]})
+  });
+  if(!res.ok){ const e=await res.json().catch(()=>({})); throw new Error(e.error?.message||`API error ${res.status}`); }
+  const data = await res.json();
+  const raw = data.content.map(b=>b.text||'').join('');
+  return raw.replace(/```json|```/g,'').trim();
+}
+
+// ── Taxonomy builder ──────────────────────────────────────────────────────────
+async function buildTaxonomy(cat, sampleText){
+  const existing = getKBTaxonomy(cat);
+  if(existing){ return existing; }
+  // Build from AI
+  const system = `You are a PPE (Personal Protective Equipment) taxonomy expert for e-commerce and industrial distribution.
+Given a product category name and optional sample product text, return the optimal list of filter attributes for that category.
+Rules:
+- Return 6-12 attributes that buyers would use to filter/search this PPE product type
+- Attributes should be specific and useful — think like a safety manager filtering a catalog
+- ALWAYS include "Type" — it is the most critical filter for PPE (e.g. "Welding Glove", "Driver Glove", "Cut-Resistant Glove")
+- For gloves include: Type, Cut Level, Coating, Color, Cuff Style, Material, Application
+- For hard hats include: Type, Class, Style, Color, Suspension, Ratchet, Material
+- For safety glasses include: Type, Lens Color, Frame Color, Coating, Style, UV Protection, Material
+- For coveralls include: Type, Material, Color, Hood, Closure, Elastic, Application
+- For footwear include: Type, Toe Protection, Sole Material, Height, Color, Electrical Hazard, Waterproof
+- For respirators include: Type, Filter Type, Valve, Application, Certification
+- Return ONLY a JSON array of attribute name strings, no explanation
+Example: ["Type","Cut Level","Coating","Color","Cuff Style","Material","Application"]`;
+  const userMsg = `Category: ${cat}\nSample products:\n${sampleText||'(none provided)'}`;
+  const raw = await callClaude(system, userMsg, 500);
+  return JSON.parse(raw);
+}
+
+// ── Taxonomy proposal UI ──────────────────────────────────────────────────────
+function renderAttrTags(attrs){
+  currentAttrs = [...attrs];
+  document.getElementById('attr-tag-row').innerHTML = attrs.map((a,i)=>
+    `<span class="attr-tag">${a}<span class="remove" onclick="removeAttr(${i})">×</span></span>`
+  ).join('');
+}
+
+function removeAttr(i){
+  currentAttrs.splice(i,1);
+  renderAttrTags(currentAttrs);
+}
+
+function addAttrTag(){
+  const inp = document.getElementById('new-attr-input');
+  const val = inp.value.trim();
+  if(!val) return;
+  currentAttrs.push(val);
+  renderAttrTags(currentAttrs);
+  inp.value='';
+}
+
+async function regenerateTaxonomy(){
+  const cat = document.getElementById('b-category').value.trim() || currentCat;
+  if(!cat) return;
+  document.getElementById('tax-prop-cat').textContent = cat;
+  document.getElementById('attr-tag-row').innerHTML = '<span style="color:var(--muted);font-family:var(--mono);font-size:12px">Regenerating...</span>';
+  try {
+    const attrs = await buildTaxonomy(cat + '__force__', '');
+    renderAttrTags(attrs);
+  } catch(e){ alert(e.message); }
+}
+
+function saveToKB(){
+  if(!currentCat||!currentAttrs.length) return;
+  saveKBEntry(currentCat, currentAttrs);
+  document.getElementById('tax-proposal-box').querySelector('.tax-proposal-title').innerHTML =
+    `Proposed taxonomy — <span id="tax-prop-cat">${currentCat}</span> &nbsp;<span style="color:var(--success);font-weight:400">✓ Saved to knowledge base</span>`;
+}
+
+function approveAndProceed(){
+  document.getElementById('tax-proposal-box').style.display='none';
+  buildBulkTableHeaders();
+  document.getElementById('bulk-controls').style.display='block';
+  document.getElementById('bulk-summary').textContent = `${bulkRows.length} rows ready — ${currentAttrs.length} attributes`;
+  renderBulkTable();
+}
+
+// ── Classification system prompt (dynamic) ────────────────────────────────────
+function buildSystemPrompt(cat, attrs){
+  // Load correction rules from knowledge base for this category
+  const kb = loadKB();
+  let rules = [];
+  let specificTypes = [];
+  
+  if(cat && cat !== 'Auto-detected'){
+    const key = Object.keys(kb).find(k=>k.toLowerCase()===cat.trim().toLowerCase());
+    if(key && kb[key].rules && kb[key].rules.length) rules = kb[key].rules;
+    if(key && kb[key].types && kb[key].types.length) specificTypes = kb[key].types;
+  }
+  
+  const rulesSection = rules.length ?
+    `\n\nCORRECTION RULES FOR ${(cat||'').toUpperCase()} — THESE OVERRIDE EVERYTHING ELSE:\n${rules.map((r,i)=>`${i+1}. ${r}`).join('\n')}` : '';
+
+  const typesSection = specificTypes.length ?
+    `\n\nVALID TYPE VALUES FOR ${(cat||'').toUpperCase()} — CHOOSE ONLY FROM THIS LIST:\n${specificTypes.map((t,i)=>`${i+1}. ${t}`).join('\n')}\nDO NOT create new Type values. Use EXACTLY these terms.` : '';
+
+  const categoryInstruction = (cat && cat !== 'Auto-detected') ?
+    `\n\n🎯 FIXED CATEGORY: This product MUST be classified as "${cat}". Do not change the category.` :
+    'Category: auto-detect from product information';
+
+  return `You are a PPE product attribute extraction engine for e-commerce catalog management.
+
+${categoryInstruction}
+Required attributes to extract: ${attrs.join(', ')}${rulesSection}${typesSection}
+
+CRITICAL ATTRIBUTE EXTRACTION RULES:
+- Extract ONLY attributes that are clearly determinable from the input. Return null for unknown.
+- Type: Extract the SPECIFIC PPE function using EXACT terms from the valid list above. Never use generic terms.
+- Application: Extract the intended use/environment (e.g. "General Work", "Welding", "Food Service", "Chemical Handling", "High Visibility", "Arc Flash")
+- Cut Level: For gloves only — look for A1-A9, Level 1-5, or ANSI/EN ratings
+- Coating: For gloves — look for Nitrile, Polyurethane, Latex, PVC, None mentions
+- Frame: For safety glasses — look for specific frame styles from valid list
+- Lens: For safety glasses — extract lens color/type (Clear, Smoke, Mirror, etc.)
+- Class: For hi-vis/FR items — extract ANSI Class 2, Class 3, NFPA ratings
+- Material: Primary construction material (Leather, Cotton, Polyester, HPPE, etc.)
+- Color: Primary visible color of the item
+- Feature: Special characteristics (Waterproof, Breathable, Anti-Fog, etc.)
+- Closure Type: How item fastens (Zipper, Velcro, Hook & Loop, etc.)
+- Protection Level: For welding/chemical items — extract protection ratings
+
+ENHANCED CLASSIFICATION LOGIC:
+1. ${(cat && cat !== 'Auto-detected') ? `The category is FIXED as "${cat}" - do not change it` : 'First identify the specific Type from the valid list that best matches the product'}
+2. Extract all applicable attributes based on the category's attribute list
+3. For Application, consider the product context and intended use environment
+4. Use your knowledge but constrain Type selection to the provided valid values only
+5. If input contains pre-extracted fields, use them directly but validate Type against the list
+
+confidence: "high" (most attrs clear), "medium" (some inferred), "low" (vague input).
+reasoning: 1 sentence explaining the classification decision.
+
+Return ONLY valid JSON, no markdown:
+{
+  "category": "${cat && cat !== 'Auto-detected' ? cat : 'detected category'}",
+  "confidence": "high|medium|low",
+  "reasoning": "...",
+  "attributes": {${attrs.map(a=>`"${a}": null`).join(',')}}
+}`;
+}
+
+// ── Single classify ───────────────────────────────────────────────────────────
+async function classifySingle(){
+  const partnum = document.getElementById('s-partnum').value.trim();
+  const desc    = document.getElementById('s-desc').value.trim();
+  const cat     = document.getElementById('s-category').value.trim();
+  const errDiv  = document.getElementById('single-error');
+  errDiv.innerHTML='';
+  if(!desc){ errDiv.innerHTML='<div class="error-msg">Enter a product name or description.</div>'; return; }
+  const btn = document.getElementById('singleBtn');
+  btn.disabled=true; btn.textContent='Building taxonomy...';
+  document.getElementById('single-result').innerHTML='';
+  try {
+    let attrs = cat ? getKBTaxonomy(cat) : null;
+    if(!attrs){ attrs = await buildTaxonomy(cat||'auto', desc); }
+    btn.textContent='Classifying...';
+    const msg = `Item Number: ${partnum||'n/a'}\nProduct: ${desc}`;
+    const raw = await callClaude(buildSystemPrompt(cat, attrs), msg, 800);
+    const result = JSON.parse(raw);
+    renderSingleResult(result, attrs);
+  } catch(e){
+    errDiv.innerHTML=`<div class="error-msg">${e.message}</div>`;
+  }
+  btn.disabled=false; btn.textContent='Classify product';
+}
+
+function renderSingleResult(r, attrs){
+  const conf  = r.confidence||'medium';
+  const a     = r.attributes||{};
+  const allAttrs = attrs || Object.keys(a);
+  const filled = allAttrs.filter(k=>a[k]).length;
+  const cards = allAttrs.map(k=>{
+    const v=a[k];
+    return `<div class="attr-cell"><div class="attr-key">${k}</div><div class="attr-value ${v?'':'null-val'}">${v||'—'}</div></div>`;
+  }).join('');
+  document.getElementById('single-result').innerHTML=`
+    <div class="result-box" style="margin-top:1.5rem">
+      <div class="result-header">
+        <span class="result-category">${r.category||'Unknown'}</span>
+        <span class="conf-badge conf-${conf}">${conf}</span>
+        <span style="margin-left:auto;font-size:11px;font-family:var(--mono);color:var(--muted)">${filled}/${allAttrs.length} attrs</span>
+      </div>
+      <div class="result-reasoning">${r.reasoning||''}</div>
+      <div class="attr-grid">${cards}</div>
+    </div>`;
+}
+
+// ── File handling ─────────────────────────────────────────────────────────────
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if(file) processFile(file);
+}
+function handleFile(file){ if(file) processFile(file); }
+
+function processFile(file){
+  document.getElementById('pdf-status-box').style.display='none';
+  document.getElementById('tax-proposal-box').style.display='none';
+  document.getElementById('bulk-controls').style.display='none';
+  document.getElementById('page-range-box').style.display='none';
+  
+  // Show category selector for all file types
+  document.getElementById('bulk-category-selector').style.display='block';
+  
+  if(file.name.toLowerCase().endsWith('.pdf')){
+    processPdfFile(file);
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    let rows=[];
+    if(file.name.endsWith('.csv')){
+      const lines = e.target.result.split('\n').filter(l=>l.trim());
+      const headers = lines[0].split(',').map(h=>h.trim().replace(/"/g,'').toLowerCase());
+      for(let i=1;i<lines.length;i++){
+        const vals = lines[i].split(',').map(v=>v.trim().replace(/"/g,''));
+        const row={}; headers.forEach((h,idx)=>row[h]=vals[idx]||'');
+        if(row.product_name||row.name||row.description) rows.push(row);
+      }
+    } else {
+      const wb = XLSX.read(e.target.result,{type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws,{defval:''});
+      rows = data.map(r=>{ const n={}; Object.keys(r).forEach(k=>n[k.toLowerCase().replace(/\s+/g,'_')]=r[k]); return n; });
+    }
+    bulkRows = rows.filter(r=>r.product_name||r.name||r.description||r.product_description)
+      .map(r=>({...r, _pre_extracted: false}));
+    // Initialize bulkResults array for each row
+    bulkResults = bulkRows.map(() => ({status:'pending', result:null}));
+    await initBulkWithTaxonomy();
+  };
+  if(file.name.endsWith('.csv')) reader.readAsText(file);
+  else reader.readAsArrayBuffer(file);
+}
+
+// ── Category application for bulk processing ──────────────────────────────────
+function applyCategoryTaxonomy(){
+  const selectedCat = document.getElementById('bulk-category-select').value.trim();
+  if(!selectedCat){
+    alert('Please select a category first.');
+    return;
+  }
+  
+  // Load taxonomy from knowledge base
+  const attrs = getKBTaxonomy(selectedCat);
+  if(!attrs || !attrs.length){
+    alert(`Category "${selectedCat}" not found in knowledge base. Please import your knowledge base first.`);
+    return;
+  }
+  
+  // Set current taxonomy
+  currentCat = selectedCat;
+  currentAttrs = attrs;
+  
+  console.log(`Applied category "${selectedCat}" with attributes:`, attrs);
+  
+  // Show taxonomy proposal with KB attributes
+  showTaxonomyProposal(selectedCat, attrs, true);
+  
+  // Hide category selector since category is now applied
+  document.getElementById('bulk-category-selector').style.display = 'none';
+}
+
+// ── Enable/disable Apply button based on selection ───────────────────────────
+function updateApplyButton(){
+  const selectedCat = document.getElementById('bulk-category-select').value.trim();
+  const applyBtn = document.getElementById('apply-category-btn');
+  if(applyBtn){
+    applyBtn.disabled = !selectedCat;
+    applyBtn.textContent = selectedCat ? 'Apply' : 'Apply';
+    applyBtn.style.opacity = selectedCat ? '1' : '0.5';
+  }
+}
+async function initBulkWithTaxonomy(){
+  // Check if a category was already applied via the Apply button
+  if(currentCat && currentAttrs && currentAttrs.length){
+    console.log(`Using applied category "${currentCat}" with attributes:`, currentAttrs);
+    return; // Category already applied, taxonomy already set
+  }
+  
+  // Auto-generation mode: Build taxonomy from AI using sample of product names
+  console.log('Auto-generating taxonomy from PDF content...');
+  document.getElementById('pdf-status-box').style.display='block';
+  setPdfStep('pstep-tax','active');
+  try {
+    const sample = bulkRows.slice(0,5).map(r=>getName(r)).join('\n');
+    const attrs = await buildTaxonomy('auto', sample);
+    currentCat = 'Auto-detected';
+    currentAttrs = attrs;
+    setPdfStep('pstep-tax','done');
+    setPdfStep('pstep-load','done');
+    showTaxonomyProposal('Auto-detected', attrs, false);
+  } catch(e){
+    setPdfStep('pstep-tax','error');
+    alert('Could not build taxonomy: '+e.message);
+  }
+}
+
+function showTaxonomyProposal(cat, attrs, fromKB){
+  currentCat = cat;
+  renderAttrTags(attrs);
+  document.getElementById('tax-prop-cat').textContent = cat + (fromKB?' (from knowledge base)':'');
+  document.getElementById('tax-proposal-box').style.display='block';
+}
+
+// ── PDF processing ─────────────────────────────────────────────────────────────
+if(typeof pdfjsLib!=='undefined'){
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+function setPdfStep(id,state){
+  const el=document.getElementById(id); if(!el) return;
+  el.className='pdf-step '+state;
+  const icon=el.querySelector('.pdf-step-icon');
+  if(icon) icon.textContent=state==='done'?'✓':state==='active'?'►':state==='error'?'✕':'○';
+}
+
+// ── PDF global state ──────────────────────────────────────────────────────────
+let pdfDoc = null;  // holds loaded PDF document
+
+async function processPdfFile(file){
+  if(!apiKey) apiKey=localStorage.getItem(API_KEY)||'';
+  if(!apiKey){
+    document.getElementById('bulk-summary').textContent='⚠ No API key — paste key in header and click Save key.';
+    document.getElementById('bulk-controls').style.display='block';
+    return;
+  }
+  try {
+    setPdfStep('pstep-extract','active');
+    document.getElementById('pdf-status-box').style.display='block';
+    const reader = new FileReader();
+    const arrayBuf = await new Promise((res,rej)=>{ reader.onload=e=>res(e.target.result); reader.onerror=rej; reader.readAsArrayBuffer(file); });
+    pdfDoc = await pdfjsLib.getDocument({data:new Uint8Array(arrayBuf)}).promise;
+    const numPages = pdfDoc.numPages;
+    setPdfStep('pstep-extract','done');
+    document.getElementById('pdf-status-box').style.display='none';
+
+    // Show page range selector
+    document.getElementById('pdf-page-count').textContent = numPages + ' pages total';
+    document.getElementById('page-to').max = numPages;
+    document.getElementById('page-from').max = numPages;
+
+    // Build dropdown — individual pages + groups of 5
+    const sel = document.getElementById('page-range-select');
+    sel.innerHTML = '<option value="">— Pick a range —</option>';
+    // Individual pages first
+    for(let p=1; p<=numPages; p++){
+      const opt = document.createElement('option');
+      opt.value = p + ',' + p;
+      opt.textContent = `Page ${p}`;
+      sel.appendChild(opt);
+    }
+    // Divider
+    const div = document.createElement('option');
+    div.disabled = true;
+    div.textContent = '── Groups ──';
+    sel.appendChild(div);
+    // Groups of 5
+    for(let s=1; s<=numPages; s+=5){
+      const e = Math.min(s+4, numPages);
+      const opt = document.createElement('option');
+      opt.value = s + ',' + e;
+      opt.textContent = `Pages ${s} – ${e}`;
+      sel.appendChild(opt);
+    }
+    // Default to page 1
+    sel.selectedIndex = 1;
+    onPageRangeSelect();
+
+    // Show single extract button by default
+    document.getElementById('run-single-btn').style.display='block';
+    document.getElementById('queue-status').textContent='Add ranges to the queue or extract single range';
+    pageQueue = [];
+    renderQueue();
+    document.getElementById('page-range-box').style.display='block';
+  } catch(err){
+    setPdfStep('pstep-extract','error');
+    document.getElementById('bulk-controls').style.display='block';
+    document.getElementById('bulk-summary').textContent='⚠ Could not load PDF: '+err.message;
+  }
+}
+
+// ── Page queue ────────────────────────────────────────────────────────────────
+let pageQueue = [];  // [{from, to, status:'pending'|'done'|'running'|'error'}]
+
+function onPageRangeSelect(){
+  const sel = document.getElementById('page-range-select');
+  if(!sel.value) return;
+  const parts = sel.value.split(',');
+  const from = parts[0] ? parts[0].trim() : '1';
+  const to   = parts[1] ? parts[1].trim() : from;
+  document.getElementById('page-from').value = from;
+  document.getElementById('page-to').value   = to;
+}
+
+function addToQueue(runNow){
+  const fromVal = document.getElementById('page-from').value;
+  const toVal   = document.getElementById('page-to').value;
+  const from = Math.max(1, parseInt(fromVal)||1);
+  const maxPage = pdfDoc ? pdfDoc.numPages : 9999;
+  // If To is empty or 0, default to same as From (single page)
+  const to = toVal ? Math.min(maxPage, parseInt(toVal)||from) : from;
+  if(from > to){
+    // Auto-fix: set To = From
+    document.getElementById('page-to').value = from;
+    return addToQueue(runNow);
+  }
+
+  if(runNow){
+    // Run immediately without adding to queue
+    pageQueue = [{from, to, status:'pending'}];
+    runQueue();
+    return;
+  }
+
+  // Add to queue
+  pageQueue.push({from, to, status:'pending'});
+  renderQueue();
+
+  // Auto-advance selector to next range
+  const sel = document.getElementById('page-range-select');
+  for(let i=0; i<sel.options.length; i++){
+    if(sel.options[i].value === from+','+to){
+      if(i+1 < sel.options.length && sel.options[i+1].value){
+        sel.selectedIndex = i+1;
+        onPageRangeSelect();
+      }
+      break;
+    }
+  }
+}
+
+function removeFromQueue(idx){
+  pageQueue.splice(idx, 1);
+  renderQueue();
+}
+
+function renderQueue(){
+  const list = document.getElementById('page-queue-list');
+  const items = document.getElementById('queue-items');
+  const runBtn = document.getElementById('run-queue-btn');
+  const singleBtn = document.getElementById('run-single-btn');
+  const status = document.getElementById('queue-status');
+
+  const pending = pageQueue.filter(q=>q.status==='pending');
+
+  if(!pageQueue.length){
+    list.style.display='none';
+    runBtn.style.display='none';
+    singleBtn.style.display='block';
+    status.textContent='Add a page range above or extract single range now';
+    return;
+  }
+
+  list.style.display='block';
+  items.innerHTML = pageQueue.map((q,i) => {
+    const color = q.status==='done'?'var(--success)':q.status==='running'?'var(--accent)':q.status==='error'?'var(--danger)':'var(--accent)';
+    const icon  = q.status==='done'?'✓':q.status==='running'?'►':q.status==='error'?'✕':'○';
+    return `<span style="display:inline-flex;align-items:center;gap:5px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.3);border-radius:6px;padding:4px 10px;font-size:12px;font-family:var(--mono);color:${color}">
+      ${icon} Pages ${q.from}–${q.to}
+      ${q.status==='pending'?`<span onclick="removeFromQueue(${i})" style="cursor:pointer;color:var(--muted);margin-left:2px;font-size:13px">×</span>`:''}
+    </span>`;
+  }).join('');
+
+  if(pending.length > 0){
+    runBtn.style.display='block';
+    runBtn.textContent = `Run queue (${pending.length} range${pending.length>1?'s':''})`;
+    singleBtn.style.display='none';
+    status.textContent = `${pageQueue.length} range${pageQueue.length>1?'s':''} in queue — ${pending.length} pending`;
+  } else {
+    runBtn.style.display='none';
+    singleBtn.style.display='block';
+    status.textContent = 'All ranges processed';
+  }
+}
+
+async function runQueue(){
+  const pending = pageQueue.filter(q=>q.status==='pending');
+  if(!pending.length){ alert('No pending ranges in queue.'); return; }
+  document.getElementById('run-queue-btn').disabled = true;
+  for(let q of pending){
+    q.status = 'running';
+    renderQueue();
+    try {
+      await extractPageRange(q.from, q.to);
+      q.status = 'done';
+    } catch(err){
+      q.status = 'error';
+      console.error('Queue error for pages',q.from,'-',q.to,':',err);
+    }
+    renderQueue();
+  }
+  document.getElementById('run-queue-btn').disabled = false;
+  document.getElementById('queue-status').textContent = 'Queue complete — review results and export';
+}
+
+async function extractPageRange(fromPage, toPage){
+  if(!pdfDoc){ alert('No PDF loaded.'); return; }
+  if(!apiKey) apiKey=localStorage.getItem(API_KEY)||'';
+  if(!apiKey){ alert('No API key — paste key in header and click Save key.'); return; }
+  // If called without args, read from inputs
+  if(fromPage===undefined){
+    const fv = document.getElementById('page-from').value;
+    const tv = document.getElementById('page-to').value;
+    fromPage = Math.max(1, parseInt(fv)||1);
+    toPage   = tv ? Math.min(pdfDoc.numPages, parseInt(tv)||fromPage) : fromPage;
+  }
+  fromPage = Math.max(1, parseInt(fromPage)||1);
+  toPage   = Math.min(pdfDoc.numPages, parseInt(toPage)||fromPage);
+  // Auto-fix if inverted
+  if(fromPage > toPage) toPage = fromPage;
+
+  document.getElementById('pdf-status-box').style.display='block';
+  ['pstep-extract','pstep-ocr','pstep-tax','pstep-parse','pstep-load'].forEach(id=>setPdfStep(id,''));
+  setPdfStep('pstep-extract','active');
+
+  try {
+    // Try text extraction first on selected pages
+    let extractedText = '';
+    for(let p=fromPage; p<=toPage; p++){
+      const page = await pdfDoc.getPage(p);
+      const content = await page.getTextContent();
+      const pageText = content.items.map(item=>item.str).join(' ');
+      extractedText += pageText + '\n\n';
+    }
+    extractedText = extractedText.trim();
+    setPdfStep('pstep-extract','done');
+
+    // If text extraction got nothing useful — run OCR
+    if(!extractedText || extractedText.replace(/\s/g,'').length < 50){
+      setPdfStep('pstep-ocr','active');
+      extractedText = await ocrPages(fromPage, toPage);
+      setPdfStep('pstep-ocr','done');
+    } else {
+      setPdfStep('pstep-ocr','done');
+    }
+
+    if(!extractedText || extractedText.length < 20){
+      throw new Error('Could not extract text from pages '+fromPage+'-'+toPage+'. Try different pages.');
+    }
+
+    pdfRawText = extractedText;
+
+    // Build taxonomy
+    setPdfStep('pstep-tax','active');
+    const cat = document.getElementById('b-category').value.trim();
+    currentCat = cat;
+    const existing = cat ? getKBTaxonomy(cat) : null;
+    if(existing){
+      currentAttrs = existing;
+    } else {
+      const sample = pdfRawText.substring(0,800);
+      const attrs = await buildTaxonomy(cat||'auto', sample);
+      currentAttrs = attrs;
+    }
+    setPdfStep('pstep-tax','done');
+
+    // Parse products
+    setPdfStep('pstep-parse','active');
+    pdfChunks=[];
+    for(let i=0;i<pdfRawText.length;i+=4000) pdfChunks.push(pdfRawText.substring(i,i+4000));
+    pdfChunkIdx=0; pdfAllProducts=[];
+
+    const products = await parsePdfChunk(pdfChunks[0]);
+    pdfChunkIdx=1;
+    pdfAllProducts = products||[];
+    setPdfStep('pstep-parse','done');
+
+    // Load rows — append to existing if any
+    setPdfStep('pstep-load','active');
+    const newRows = pdfAllProducts.map(p=>({
+      item_number: p.item_number||'',
+      product_name: p.product_name||'',
+      description: p.description||'',
+      extra_info: p.extra_info||'',
+      _type: p.type||'',
+      _cut_level: p.cut_level||'',
+      _coating: p.coating||'',
+      _color: p.color||'',
+      _cuff_style: p.cuff_style||'',
+      _material: p.material||'',
+      _application: p.application||'',
+      _pre_extracted: true
+    })).filter(r=>r.product_name);
+    newRows.forEach(r=>{ bulkRows.push(r); bulkResults.push({status:'pending',result:null}); });
+    setPdfStep('pstep-load','done');
+
+    // Show taxonomy proposal if first batch
+    if(bulkRows.length === newRows.length){
+      showTaxonomyProposal(cat||'Auto-detected', currentAttrs, !!existing);
+    }
+
+    buildBulkTableHeaders();
+    renderBulkTable();
+    document.getElementById('bulk-controls').style.display='block';
+
+    const remaining = pdfChunks.length - pdfChunkIdx;
+    let summary = `Pages ${fromPage}–${toPage}: ${newRows.length} products found (${bulkRows.length} total)`;
+    if(remaining>0) summary += ` &nbsp;<button class="bulk-btn" style="padding:4px 10px;font-size:11px" onclick="processNextChunk()">Load more from these pages (chunk ${pdfChunkIdx+1}/${pdfChunks.length})</button>`;
+    document.getElementById('bulk-summary').innerHTML = summary;
+
+    // Mark this range in dropdown
+    const sel2 = document.getElementById('page-range-select');
+    for(let i=0; i<sel2.options.length; i++){
+      if(sel2.options[i].value === fromPage+','+toPage){
+        sel2.options[i].textContent = sel2.options[i].textContent.replace(' ✓','') + ' ✓';
+        sel2.options[i].style.color = 'var(--success)';
+        break;
+      }
+    }
+
+  } catch(err){
+    console.error('Extract error:',err);
+    ['pstep-extract','pstep-ocr','pstep-tax','pstep-parse','pstep-load'].forEach(id=>{
+      if(document.getElementById(id).classList.contains('active')) setPdfStep(id,'error');
+    });
+    document.getElementById('bulk-controls').style.display='block';
+    document.getElementById('bulk-summary').textContent='⚠ '+err.message;
+  }
+}
+
+async function ocrPages(fromPage, toPage){
+  // Render each page to canvas and send to OCR.space (free OCR API)
+  let allText = '';
+  for(let p=fromPage; p<=toPage; p++){
+    const page = await pdfDoc.getPage(p);
+    const viewport = page.getViewport({scale:2.0});  // 2x scale for better OCR accuracy
+    const canvas = document.createElement('canvas');
+    canvas.width  = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+    await page.render({canvasContext:ctx, viewport}).promise;
+    const dataUrl = canvas.toDataURL('image/png');
+    // Remove data:image/png;base64, prefix
+    const base64 = dataUrl.split(',')[1];
+    try {
+      const formData = new FormData();
+      formData.append('base64Image', 'data:image/png;base64,' + base64);
+      formData.append('language', 'eng');
+      formData.append('isOverlayRequired', 'false');
+      formData.append('detectOrientation', 'true');
+      formData.append('scale', 'true');
+      formData.append('OCREngine', '2');  // Engine 2 better for tables
+      const res = await fetch('https://api.ocr.space/parse/image', {
+        method:'POST',
+        headers:{'apikey':'helloworld'},  // free public key
+        body: formData
+      });
+      const data = await res.json();
+      if(data.ParsedResults && data.ParsedResults[0]){
+        allText += data.ParsedResults[0].ParsedText + '\n\n';
+      }
+    } catch(ocrErr){
+      console.warn('OCR failed for page',p,ocrErr);
+    }
+  }
+  return allText.trim();
+}
+
+async function parsePdfChunk(text){
+  const mode = 'individual';  // Always extract individual items only
+  const modeInstr = `Extract ONLY individual single items — one type, one item number per row. Do NOT extract sets/kits with quantities.`;
+  // Load KB rules for current category
+  const kbForParse = loadKB();
+  let parseRules = [];
+  if(currentCat){
+    const kbKey = Object.keys(kbForParse).find(k=>k.toLowerCase()===currentCat.trim().toLowerCase());
+    if(kbKey && kbForParse[kbKey].rules && kbForParse[kbKey].rules.length) parseRules = kbForParse[kbKey].rules;
+  }
+  const parseRulesSection = parseRules.length ?
+    `\n\nCORRECTION RULES — THESE OVERRIDE EVERYTHING ELSE:\n${parseRules.map((r,i)=>`${i+1}. ${r}`).join('\n')}` : '';
+
+  const system=`You are a PPE product data extraction engine for an industrial safety catalog.
+${modeInstr}${parseRulesSection}
+
+CRITICAL — HOW TO READ ANY CATALOG PAGE:
+
+STEP 1 — READ THE COLUMN HEADERS FIRST.
+Before extracting any data, find the table header row. It tells you exactly what each column means.
+Examples of header rows:
+- "ITEM | DESCRIPTION | CUT LEVEL | COATING | COLOR | SIZE" → glove layout
+- "ITEM | PRODUCT NAME | TYPE | LENS COLOR | FRAME" → safety glasses layout
+- Headers vary by catalog. Always read them first.
+
+STEP 2 — MAP COLUMNS TO FIELDS.
+Whatever the header says, extract accordingly:
+- The column labeled "TYPE" or "DESCRIPTION" contains the specific PPE function.
+- "CUT LEVEL" = cut resistance rating.
+- "COATING" = surface treatment/grip material.
+- "COLOR" = primary product color.
+- "ITEM" or "ITEM #" or "PART #" = item number.
+- "DESCRIPTION" = product name/description.
+
+STEP 3 — EXTRACT FROM DESCRIPTION BLOCK (above or below table).
+Look for shared attributes that apply to ALL rows: material, application, features.
+"Nitrile coated" → coating = "Nitrile"
+"Cut Level A2" → cut_level = "A2"
+"High visibility" → application = "High Visibility"
+
+FIELDS TO EXTRACT (use what applies, leave others null):
+- item_number: item/part number from the table
+- product_name: product description — strip brand name, keep type + key specs. Example: "Cut-Resistant Gloves" not "MaxiFlex® Ultimate™ Cut-Resistant Gloves"
+- description: additional product details if provided in separate field
+- extra_info: any additional specs or notes
+- type: the specific PPE function (e.g. "Welding Gloves", "Driver Gloves", "Cut-Resistant Gloves", "Safety Glasses", "Hard Hat")
+- cut_level: cut resistance rating (A1-A9, Level 1-5) for gloves only
+- coating: surface treatment (e.g. "Nitrile", "Polyurethane", "Latex", "None")
+- color: primary product color
+- cuff_style: for gloves only (e.g. "Knit Wrist", "Gauntlet", "Open Cuff")
+- material: primary material (e.g. "Leather", "Nylon", "Kevlar", "HPPE", "Cotton")
+- application: intended use (e.g. "General Work", "Welding", "Food Service", "Chemical Handling")
+
+CRITICAL RULES:
+- ALWAYS extract the specific PPE function in the type field
+- Read column headers first — do not assume column order
+- Strip brand names (MaxiFlex®, PIP®, etc.) from product_name
+- Return ONLY valid JSON array. If no products found return [].
+- NEVER use single quotes in JSON. Escape quotes properly inside strings.
+
+Output: [{"item_number":"34-C230","product_name":"Cut-Resistant Gloves","type":"Cut-Resistant Gloves","cut_level":"A2","coating":"Nitrile","color":"Gray","cuff_style":"Knit Wrist","material":"HPPE","application":"General Work"},...]`;
+  const raw=await callClaude(system,`Extract products (${mode}):\n\n${text}`,4000);
+  // Clean and parse with multiple fallback strategies
+  const cleanJSON = (str) => {
+    // Fix single-quoted strings (e.g. 'A2' -> "A2")
+    let s = str;
+    // Replace single-quoted values: 'value' -> "value"
+    // But only when they appear as JSON values (after : or [)
+    s = s.replace(/:\s*'([^']*)'/g, (m,v) => ': "' + v.replace(/"/g,'\\"') + '"');
+    s = s.replace(/\[\s*'([^']*)'/g, (m,v) => '["' + v.replace(/"/g,'\\"') + '"');
+    // Fix unescaped inch symbols inside double-quoted strings
+    // e.g. "8"" -> "8\""
+    s = s.replace(/"([^"]*)""/g, (m,v) => '"' + v + '\""');
+    // Fix trailing commas before ] or }
+    s = s.replace(/,(\s*[\]}])/g, '$1');
+    return s;
+  };
+  const tryParse = (str) => {
+    // Try raw first
+    try{ return JSON.parse(str); } catch(e){}
+    // Try cleaned
+    try{ return JSON.parse(cleanJSON(str)); } catch(e){ return null; }
+  };
+  // Strategy 1: direct parse
+  let parsed = tryParse(raw);
+  if(parsed) return Array.isArray(parsed) ? parsed : [];
+  // Strategy 2: find JSON array in response
+  const arrMatch = raw.match(/\[.*\]/s);
+  if(arrMatch){ parsed = tryParse(arrMatch[0]); if(parsed) return parsed; }
+  // Strategy 3: recover truncated array
+  const lastComma = raw.lastIndexOf('},');
+  if(lastComma>0){ parsed = tryParse(raw.substring(0,lastComma+1)+']'); if(parsed) return parsed; }
+  // Strategy 4: single object
+  const lastClose = raw.lastIndexOf('}');
+  if(lastClose>0){
+    const a = raw.substring(0,lastClose+1);
+    parsed = tryParse(a.startsWith('[')?a+']':'['+a+']');
+    if(parsed) return parsed;
+  }
+  // Strategy 5: return empty array gracefully — never crash the queue
+  console.warn('No products found in chunk, returning empty array. Raw:', raw.substring(0,200));
+  return [];
+}
+
+async function processNextChunk(){
+  if(!pdfChunks.length||pdfChunkIdx>=pdfChunks.length) return;
+  if(!apiKey) apiKey=localStorage.getItem(API_KEY)||'';
+  const idx=pdfChunkIdx, total=pdfChunks.length;
+  document.getElementById('bulk-summary').textContent=`Processing chunk ${idx+1} of ${total}...`;
+  document.getElementById('pdf-status-box').style.display='block';
+  setPdfStep('pstep-extract','done');
+  setPdfStep('pstep-tax','done');
+  const label=document.getElementById('pstep-parse');
+  if(label) label.innerHTML=`<span class="pdf-step-icon">►</span> Parsing chunk ${idx+1} of ${total}`;
+  label.className='pdf-step active';
+  try {
+    const newProds=await parsePdfChunk(pdfChunks[idx]);
+    pdfChunkIdx++;
+    if(newProds&&newProds.length) pdfAllProducts.push(...newProds);
+    const addedRows=(newProds||[]).map(p=>({item_number:p.item_number||'',product_name:p.product_name||'',_type:p.type||''})).filter(r=>r.product_name);
+    bulkRows.push(...addedRows);
+    addedRows.forEach(()=>bulkResults.push({status:'pending',result:null}));
+    renderBulkTable();
+    setPdfStep('pstep-parse','done');
+    setPdfStep('pstep-load','done');
+    const remaining=pdfChunks.length-pdfChunkIdx;
+    let summary=`${bulkRows.length} total products — chunk ${pdfChunkIdx} of ${total} loaded`;
+    if(remaining>0) summary+=` &nbsp;<button class="bulk-btn" style="padding:4px 10px;font-size:11px" onclick="processNextChunk()">Load chunk ${pdfChunkIdx+1} of ${total}</button>`;
+    else summary+=' — all chunks loaded';
+    document.getElementById('bulk-summary').innerHTML=summary;
+  } catch(err){
+    document.getElementById('bulk-summary').textContent='Error on chunk '+(idx+1)+': '+err.message;
+    setPdfStep('pstep-parse','error');
+  }
+}
+
+// ── Bulk table ────────────────────────────────────────────────────────────────
+function buildBulkTableHeaders(){
+  const fixedCols=['#','Item Number','Product Name','Status','Category','Confidence'];
+  const attrCols = currentAttrs;
+  const allCols = [...fixedCols, ...attrCols];
+  document.getElementById('bulk-thead').innerHTML = allCols.map(c=>`<th>${c}</th>`).join('');
+}
+
+function getName(row){ return row.product_name||row.name||row.description||row.product_description||''; }
+function getItemNum(row){ return row.item_number||row.part_number||row.sku||row.item_id||''; }
+
+function buildRowHTML(row, i){
+  const r=bulkResults[i];
+  const dotClass={pending:'dot-pending',running:'dot-running',done:'dot-done',error:'dot-error'}[r.status]||'dot-pending';
+  const res=r.result, a=res?.attributes||{};
+  const attrCells=currentAttrs.map(k=>`<td title="${a[k]||''}">${a[k]||''}</td>`).join('');
+  return `<tr id="brow-${i}">
+    <td style="color:var(--muted)">${i+1}</td>
+    <td title="${getItemNum(row)}">${getItemNum(row)||'—'}</td>
+    <td title="${getName(row)}">${getName(row).substring(0,45)}${getName(row).length>45?'...':''}</td>
+    <td><div class="status-cell"><div class="dot ${dotClass}"></div><span style="color:var(--muted)">${r.status}</span></div></td>
+    <td>${res?.category||''}</td>
+    <td>${res?.confidence||''}</td>
+    ${attrCells}
+  </tr>`;
+}
+
+function renderBulkTable(){
+  buildBulkTableHeaders();
+  document.getElementById('bulkBody').innerHTML=bulkRows.map((row,i)=>buildRowHTML(row,i)).join('');
+}
+
+function updateRow(i){
+  const tr=document.getElementById('brow-'+i);
+  if(tr) tr.outerHTML=buildRowHTML(bulkRows[i],i);
+}
+
+// ── Run bulk classification ────────────────────────────────────────────────────
+async function runBulk(){
+  if(running) return;
+  if(!apiKey) apiKey=localStorage.getItem(API_KEY)||'';
+  if(!apiKey){ alert('Enter your Anthropic API key in the header first.'); return; }
+  running=true;
+  document.getElementById('runBulkBtn').disabled=true;
+  document.getElementById('exportBtn').style.display='none';
+  
+  const total=bulkRows.length;
+  let done=0, errors=0;
+  
+  // Use current taxonomy (either applied from KB or auto-generated)
+  const system = buildSystemPrompt(currentCat, currentAttrs);
+    
+  for(let i=0;i<total;i++){
+    if(bulkResults[i].status==='done'){ done++; continue; }
+    bulkResults[i].status='running';
+    updateRow(i);
+    document.getElementById('prog-label').textContent=`Processing ${i+1} of ${total}...`;
+    document.getElementById('prog-count').textContent=`${done} done · ${errors} errors`;
+    document.getElementById('progFill').style.width=((i/total)*100).toFixed(1)+'%';
+    try {
+      const row = bulkRows[i];
+      // If row was pre-extracted from PDF (has description block attributes),
+      // build the result directly without another API call
+      if(row._pre_extracted && (row._type || row._cut_level || row._coating)){
+        const preAttrs = {};
+        currentAttrs.forEach(attr => {
+          const key = '_' + attr.toLowerCase().replace(/[\s\-\/]+/g,'_');
+          const altKey = '_' + attr.toLowerCase().replace(/[\s\-\/]+/g,'');
+          // Map common attribute names to our _field names
+          const attrMap = {
+            'type': row._type,
+            'cut level': row._cut_level, 'cut_level': row._cut_level,
+            'coating': row._coating, 'color': row._color,
+            'cuff style': row._cuff_style, 'cuff_style': row._cuff_style,
+            'material': row._material, 'application': row._application
+          };
+          const attrLower = attr.toLowerCase();
+          preAttrs[attr] = attrMap[attrLower] || row[key] || row[altKey] || null;
+        });
+        bulkResults[i]={status:'done',result:{
+          category: currentCat||'Gloves',
+          confidence: 'high',
+          reasoning: 'Extracted directly from PDF catalog page description and table.',
+          attributes: preAttrs
+        }};
+        done++;
+      } else {
+        // Standard API classification for CSV/Excel rows or rows without pre-extracted data
+        const extras = [
+          row._type ? `Type: ${row._type}` : '',
+          row._cut_level ? `Cut Level: ${row._cut_level}` : '',
+          row._coating ? `Coating: ${row._coating}` : '',
+          row._color ? `Color: ${row._color}` : '',
+          row._material ? `Material: ${row._material}` : '',
+        ].filter(Boolean).join(', ');
+        const msg=`Item Number: ${getItemNum(row)||'n/a'}\nProduct: ${getName(row)}${extras?' | '+extras:''}`;
+        const raw=await callClaude(system, msg, 800);
+        bulkResults[i]={status:'done',result:JSON.parse(raw)};
+        done++;
+      }
+    } catch(e){
+      bulkResults[i]={status:'error',result:null,error:e.message};
+      errors++;
+    }
+    updateRow(i);
+    await new Promise(r=>setTimeout(r,300));
+  }
+  document.getElementById('progFill').style.width='100%';
+  document.getElementById('prog-label').textContent='Complete';
+  document.getElementById('prog-count').textContent=`${done} done · ${errors} errors`;
+  document.getElementById('bulk-summary').textContent=`${done}/${total} classified · ${errors} errors`;
+  document.getElementById('exportBtn').style.display='';
+  document.getElementById('htmlBtn').style.display='';
+  document.getElementById('runBulkBtn').disabled=false;
+  running=false;
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+function exportResults(){
+  const headers=['item_number','product_name','description','extra_info',...currentAttrs,'category','confidence','reasoning','html_table'];
+  const data=bulkRows.map((row,i)=>{
+    const r=bulkResults[i],res=r.result,a=res?.attributes||{};
+    const htmlTable=buildProductHTML(row,res,currentAttrs);
+    return[
+      getItemNum(row),
+      getName(row),
+      row.description||'',
+      row.extra_info||'',
+      ...currentAttrs.map(k=>a[k]||mapPreExtracted(row,k)||''),
+      res?.category||'',
+      res?.confidence||'',
+      res?.reasoning||'',
+      htmlTable
+    ];
+  });
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet([headers,...data]);
+  ws['!cols']=headers.map(()=>({wch:20}));
+  XLSX.utils.book_append_sheet(wb,ws,'Classified Products');
+  XLSX.writeFile(wb,`ppetaxo_${currentCat||'results'}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function downloadTemplate(){
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet([
+    ['item_number','product_name','description','extra_info','category'],
+    ['PIP-34-C230','MaxiFlex Cut-Resistant Work Gloves','Level A2 cut protection','Nitrile coated palm','Gloves'],
+    ['MCR-ST1-21','Safety Glasses with Side Shields','Clear polycarbonate lens','ANSI Z87.1 certified','Safety Glasses'],
+    ['','','','','']
+  ]);
+  ws['!cols']=[{wch:20},{wch:50},{wch:30},{wch:25},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws,'Import Template');
+  XLSX.writeFile(wb,'ppetaxo_template.xlsx');
+}
+
+function buildProductHTML(row, result, attrs){
+  const itemNum = getItemNum(row);
+  const name = getName(row);
+  const desc = row.description || '';
+  const extra = row.extra_info || '';
+  const a = result?.attributes || {};
+  // Use attrs in exact same order as the table columns shown on screen
+  // Add item number, product name, description, extra_info as first rows
+  const allRows = [
+    `<tr><th style="text-align:left;padding:6px 12px;background:#f5f5f5;border:1px solid #ddd;white-space:nowrap;font-weight:600;width:160px">Item Number</th><td style="padding:6px 12px;border:1px solid #ddd">${itemNum||'—'}</td></tr>`,
+    `<tr><th style="text-align:left;padding:6px 12px;background:#f5f5f5;border:1px solid #ddd;white-space:nowrap;font-weight:600;width:160px">Product Name</th><td style="padding:6px 12px;border:1px solid #ddd">${name||'—'}</td></tr>`,
+    desc ? `<tr><th style="text-align:left;padding:6px 12px;background:#f5f5f5;border:1px solid #ddd;white-space:nowrap;font-weight:600;width:160px">Description</th><td style="padding:6px 12px;border:1px solid #ddd">${desc}</td></tr>` : '',
+    extra ? `<tr><th style="text-align:left;padding:6px 12px;background:#f5f5f5;border:1px solid #ddd;white-space:nowrap;font-weight:600;width:160px">Extra Info</th><td style="padding:6px 12px;border:1px solid #ddd">${extra}</td></tr>` : '',
+    ...attrs.map(attr => {
+      const val = a[attr] || mapPreExtracted(row, attr);
+      if(!val) return '';
+      return `<tr><th style="text-align:left;padding:6px 12px;background:#f5f5f5;border:1px solid #ddd;white-space:nowrap;font-weight:600;width:160px">${attr}</th><td style="padding:6px 12px;border:1px solid #ddd">${val}</td></tr>`;
+    })
+  ].filter(Boolean).join('');
+  if(!allRows) return '';
+  return `<table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:14px;margin-bottom:24px">
+  <tbody>${allRows}</tbody>
+</table>`;
+}
+
+function mapPreExtracted(row, attr){
+  if(!row._pre_extracted) return null;
+  const a = attr.toLowerCase();
+  const map = {
+    'type':row._type,'cut level':row._cut_level,'coating':row._coating,
+    'color':row._color,'cuff style':row._cuff_style,'material':row._material,
+    'application':row._application
+  };
+  return map[a] || null;
+}
+
+function generateHTML(){
+  // Build HTML tables for all classified rows
+  const tables = bulkRows.map((row, i) => {
+    const r = bulkResults[i];
+    if(r.status !== 'done') return null;
+    return buildProductHTML(row, r.result, currentAttrs);
+  }).filter(Boolean);
+
+  if(!tables.length){ alert('No classified rows to generate HTML for.'); return; }
+
+  const fullHTML = tables.join('\n');
+
+  // Store for export
+  window._htmlTables = {};
+  bulkRows.forEach((row, i) => {
+    const r = bulkResults[i];
+    if(r.status === 'done') window._htmlTables[i] = buildProductHTML(row, r.result, currentAttrs);
+  });
+
+  // Show inline modal — no popup needed
+  let modal = document.getElementById('html-modal');
+  if(modal) modal.remove();
+  modal = document.createElement('div');
+  modal.id = 'html-modal';
+  modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:9999;display:flex;flex-direction:column';
+  modal.innerHTML = `
+    <div style="background:#18181c;border-bottom:1px solid #2a2a32;padding:14px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0">
+      <span style="font-family:'DM Mono',monospace;font-size:12px;color:#e74c3c;font-weight:500">${tables.length} HTML tables ready</span>
+      <button onclick="copyAllHTML()" style="background:#e74c3c;color:#fff;border:none;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;font-family:'DM Mono',monospace">Copy All HTML</button>
+      <button onclick="downloadHTMLFile()" style="background:transparent;color:#27ae60;border:1px solid #27ae60;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'DM Mono',monospace">Download .html</button>
+      <span id="html-copy-status" style="font-size:11px;color:#27ae60;font-family:'DM Mono',monospace"></span>
+      <button onclick="document.getElementById('html-modal').remove()" style="margin-left:auto;background:transparent;color:#7b7a8e;border:1px solid #2a2a32;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:'DM Mono',monospace">✕ Close</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:16px">
+      ${tables.map((t,i)=>`
+        <div style="background:#fff;border-radius:8px;overflow:hidden">
+          <div style="background:#f5f5f5;padding:6px 12px;font-size:10px;color:#888;font-family:monospace;border-bottom:1px solid #ddd">Table ${i+1} of ${tables.length}</div>
+          ${t}
+        </div>`).join('')}
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+function copyAllHTML(){
+  const tables = bulkRows.map((row, i) => {
+    const r = bulkResults[i];
+    if(r.status !== 'done') return null;
+    return buildProductHTML(row, r.result, currentAttrs);
+  }).filter(Boolean);
+  const fullHTML = tables.join('\n');
+  const status = document.getElementById('html-copy-status');
+  navigator.clipboard.writeText(fullHTML).then(()=>{
+    if(status){status.textContent='✓ Copied to clipboard!';setTimeout(()=>status.textContent='',2500);}
+  }).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=fullHTML;
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');
+    document.body.removeChild(ta);
+    if(status){status.textContent='✓ Copied!';setTimeout(()=>status.textContent='',2500);}
+  });
+}
+
+function downloadHTMLFile(){
+  const tables = bulkRows.map((row, i) => {
+    const r = bulkResults[i];
+    if(r.status !== 'done') return null;
+    return buildProductHTML(row, r.result, currentAttrs);
+  }).filter(Boolean);
+  const fullHTML = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PPE Product Tables</title></head><body>'+tables.join('\n')+'</body></html>';
+  const a=document.createElement('a');
+  a.href='data:text/html;charset=utf-8,'+encodeURIComponent(fullHTML);
+  a.download='ppe_product_tables.html';a.click();
+}
+
+function resetBulk(){
+  bulkRows=[]; bulkResults=[]; running=false; currentAttrs=[]; pdfChunks=[]; pdfChunkIdx=0; pdfAllProducts=[];
+  document.getElementById('bulk-controls').style.display='none';
+  document.getElementById('pdf-status-box').style.display='none';
+  document.getElementById('tax-proposal-box').style.display='none';
+  document.getElementById('page-range-box').style.display='none';
+  document.getElementById('fileInput').value='';
+  pdfDoc=null;
+  pageQueue=[];
+  document.getElementById('bulkBody').innerHTML='';
+  document.getElementById('progFill').style.width='0%';
+  document.getElementById('prog-label').textContent='Ready';
+  document.getElementById('prog-count').textContent='';
+  document.getElementById('exportBtn').style.display='none';
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(name){
+  const tabs=['single','bulk','kb'];
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  const idx=tabs.indexOf(name);
+  document.querySelectorAll('.tab')[idx].classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='kb') renderKB();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.onload=()=>{
+  if(apiKey){
+    document.getElementById('apiKeyInput').value=apiKey;
+    document.getElementById('apiStatus').textContent='key saved';
+    document.getElementById('apiStatus').className='api-status ok';
+  }
+  initKB();  // Initialize with default PPE categories
+  renderKB();
+  populateCatDatalist();
+};
+</script>
+</body>
+</html>

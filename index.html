@@ -817,6 +817,11 @@ function approveAndProceed(){
   buildBulkTableHeaders();
   document.getElementById('bulk-controls').style.display='block';
   document.getElementById('bulk-summary').textContent = `${bulkRows.length} rows ready — ${currentAttrs.length} attributes`;
+  
+  // Ensure run button is enabled after approval
+  document.getElementById('runBulkBtn').disabled = false;
+  document.getElementById('runBulkBtn').style.opacity = '1';
+  
   renderBulkTable();
 }
 
@@ -1003,6 +1008,9 @@ function applyCategoryTaxonomy(){
   
   // Hide category selector since category is now applied
   document.getElementById('bulk-category-selector').style.display = 'none';
+  
+  // Ensure run button will be enabled after user approves
+  // (The approval step will enable it)
 }
 
 // ── Enable/disable Apply button based on selection ───────────────────────────
@@ -1803,11 +1811,18 @@ function downloadHTMLFile(){
 
 function resetBulk(){
   bulkRows=[]; bulkResults=[]; running=false; currentAttrs=[]; pdfChunks=[]; pdfChunkIdx=0; pdfAllProducts=[];
+  currentCat = ''; // Reset current category
   document.getElementById('bulk-controls').style.display='none';
   document.getElementById('pdf-status-box').style.display='none';
   document.getElementById('tax-proposal-box').style.display='none';
   document.getElementById('page-range-box').style.display='none';
+  document.getElementById('bulk-category-selector').style.display='none';
   document.getElementById('fileInput').value='';
+  
+  // Reset run button state
+  document.getElementById('runBulkBtn').disabled = false;
+  document.getElementById('runBulkBtn').style.opacity = '1';
+  
   pdfDoc=null;
   pageQueue=[];
   document.getElementById('bulkBody').innerHTML='';

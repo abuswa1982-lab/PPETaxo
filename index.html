@@ -84,7 +84,6 @@ tr:hover td{background:var(--surface2)}
 .pdf-step.active{color:var(--accent)}.pdf-step.done{color:var(--success)}.pdf-step.error{color:var(--danger)}
 .pdf-step-icon{font-size:12px;width:16px;text-align:center;flex-shrink:0}
 .error-msg{color:var(--danger);font-size:12px;font-family:var(--mono);margin-top:10px;padding:10px 14px;background:rgba(231,76,60,.08);border-radius:8px;border:1px solid rgba(231,76,60,.2)}
-/* taxonomy proposal */
 .tax-proposal{background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:1.25rem;margin-bottom:1rem}
 .tax-proposal-title{font-family:var(--mono);font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
 .attr-tag-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
@@ -95,7 +94,6 @@ tr:hover td{background:var(--surface2)}
 .add-attr-row input:focus{border-color:var(--accent)}
 .add-attr-row button{padding:6px 12px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--accent);font-family:var(--mono);font-size:12px;cursor:pointer}
 .add-attr-row button:hover{border-color:var(--accent)}
-/* knowledge base */
 .kb-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px}
 .kb-card-header{background:var(--surface2);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
 .kb-cat-name{font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:500}
@@ -113,6 +111,8 @@ tr:hover td{background:var(--surface2)}
 .template-section{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;gap:12px}
 .template-info .template-title{font-size:13px;font-weight:500;margin-bottom:4px}
 .template-info .template-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.pipe-preview{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--accent2);word-break:break-all;line-height:1.6}
+.pipe-preview-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
 input[type=file]{display:none}
 </style>
 </head>
@@ -147,6 +147,16 @@ input[type=file]{display:none}
         <datalist id="kb-cats-list"></datalist>
       </div>
     </div>
+    <div class="form-grid">
+      <div class="field">
+        <label>Brand (added to pipe export)</label>
+        <input type="text" id="s-brand" placeholder="e.g. Radians"/>
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--mono);padding-top:10px;line-height:1.5">Brand prefix appears in the pipe-format string</div>
+      </div>
+    </div>
     <div class="field" style="margin-bottom:16px">
       <label>Product name / description</label>
       <textarea id="s-desc" placeholder="e.g. MaxiFlex Nitrile Coated Work Gloves - Cut Resistant Level A2"></textarea>
@@ -161,17 +171,21 @@ input[type=file]{display:none}
     <div class="template-section">
       <div class="template-info">
         <div class="template-title">Download import template</div>
-        <div class="template-sub">CSV: item_number, product_name, description, extra_info, category (optional)</div>
+        <div class="template-sub">CSV: item_number, product_name, description, extra_info, brand, category (optional)</div>
       </div>
       <button class="bulk-btn" onclick="downloadTemplate()">Download template</button>
     </div>
 
-    <!-- Category row -->
-    <div style="margin-bottom:1rem">
+    <!-- Category + Brand row -->
+    <div class="form-grid" style="margin-bottom:1rem">
       <div class="field">
         <label>Category for this PDF / file</label>
         <input type="text" id="b-category" value="Gloves" list="kb-cats-list2"/>
         <datalist id="kb-cats-list2"></datalist>
+      </div>
+      <div class="field">
+        <label>Brand (prefixed to pipe export)</label>
+        <input type="text" id="b-brand" placeholder="e.g. Radians"/>
       </div>
     </div>
 
@@ -191,7 +205,6 @@ input[type=file]{display:none}
     </div>
     <input type="file" id="fileInput" accept=".csv,.xlsx,.xls,.pdf" onchange="handleFile(this.files[0])"/>
 
-    <!-- Category selection for bulk processing -->
     <div id="bulk-category-selector" style="display:none;margin:15px 0;padding:15px;background:var(--surface);border:1px solid var(--border);border-radius:10px">
       <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;font-family:var(--mono)">Target Category 
         <span id="cat-count-debug" style="font-size:11px;font-weight:normal;color:var(--muted)"></span>
@@ -208,7 +221,6 @@ input[type=file]{display:none}
       </div>
     </div>
 
-    <!-- Taxonomy proposal box -->
     <div id="tax-proposal-box" style="display:none">
       <div class="tax-proposal">
         <div class="tax-proposal-title">Proposed taxonomy — <span id="tax-prop-cat"></span> &nbsp;<span style="color:var(--muted);font-weight:400">Review and edit before classifying</span></div>
@@ -225,14 +237,11 @@ input[type=file]{display:none}
       </div>
     </div>
 
-    <!-- Page range queue — shows after PDF is loaded -->
     <div id="page-range-box" style="display:none;background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:1.25rem;margin-bottom:1rem">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <span style="font-family:var(--mono);font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em">PDF loaded — <span id="pdf-page-count"></span></span>
         <span style="font-size:11px;font-family:var(--mono);color:var(--muted)">Add ranges to the queue, then run all at once</span>
       </div>
-
-      <!-- Add to queue row -->
       <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap">
         <div class="field" style="margin:0">
           <label>Quick select</label>
@@ -251,14 +260,10 @@ input[type=file]{display:none}
         </div>
         <button class="bulk-btn" style="align-self:flex-end" onclick="addToQueue()">+ Add to queue</button>
       </div>
-
-      <!-- Queue list -->
       <div id="page-queue-list" style="margin-bottom:12px;display:none">
         <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Queue</div>
         <div id="queue-items" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
       </div>
-
-      <!-- Run queue button -->
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <button class="bulk-btn primary" id="run-queue-btn" onclick="runQueue()" style="display:none">Run queue</button>
         <button class="bulk-btn" onclick="addToQueue(true)" style="display:none" id="run-single-btn">Extract these pages now</button>
@@ -266,7 +271,6 @@ input[type=file]{display:none}
       </div>
     </div>
 
-    <!-- PDF status -->
     <div id="pdf-status-box" style="display:none">
       <div class="pdf-status">
         <div class="pdf-status-title">PDF processing</div>
@@ -288,9 +292,11 @@ input[type=file]{display:none}
         <button class="bulk-btn primary" id="runBulkBtn" onclick="runBulk()">Run classification</button>
         <button class="bulk-btn success" id="exportBtn" onclick="exportResults()" style="display:none">Export Excel</button>
         <button class="bulk-btn" id="htmlBtn" onclick="generateHTML()" style="display:none;border-color:var(--accent2);color:var(--accent2)">Generate HTML Tables</button>
+        <button class="bulk-btn" id="pipePreviewBtn" onclick="showPipePreview()" style="display:none;border-color:var(--accent2);color:var(--accent2)">Preview Pipe Format</button>
         <button class="bulk-btn" onclick="resetBulk()">Clear</button>
         <span id="bulk-summary" style="font-size:11px;font-family:var(--mono);color:var(--muted);margin-left:auto"></span>
       </div>
+      <div id="pipe-preview-box" style="display:none"></div>
       <div class="table-wrap">
         <table id="bulkTable">
           <thead><tr id="bulk-thead"><th>#</th><th>Item Number</th><th>Product Name</th><th>Status</th><th>Category</th><th>Confidence</th></tr></thead>
@@ -330,50 +336,30 @@ input[type=file]{display:none}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-// ── Storage keys ─────────────────────────────────────────────────────────────
-const KB_KEY   = 'ppetaxo_kb_v1';      // knowledge base — NEVER deleted on rebuild
+const KB_KEY   = 'ppetaxo_kb_v1';
 const API_KEY  = 'ppetaxo_key';
 
-// ── State ─────────────────────────────────────────────────────────────────────
 let apiKey   = localStorage.getItem(API_KEY) || '';
 let bulkRows = [], bulkResults = [], running = false;
-let currentAttrs   = [];   // active taxonomy attributes for current session
+let currentAttrs   = [];
 let currentCat     = '';
 let pdfRawText     = '';
 let pdfChunks      = [];
 let pdfChunkIdx    = 0;
 let pdfAllProducts = [];
 
-// ── Knowledge base ─────────────────────────────────────────────────────────────
 function loadKB(){ return JSON.parse(localStorage.getItem(KB_KEY)||'{}') }
 function saveKB(kb){ localStorage.setItem(KB_KEY, JSON.stringify(kb)) }
 
-// Pre-populate KB with basic PPE categories on first load
 function initKB(){
   const kb = loadKB();
   if(Object.keys(kb).length === 0){
-    // First time - populate with basic PPE categories
     const defaultCategories = {
-      'Gloves': {
-        attrs: ['Type', 'Cut Level', 'Coating', 'Color', 'Cuff Style', 'Material', 'Application'],
-        saved: new Date().toISOString()
-      },
-      'Hard Hats': {
-        attrs: ['Type', 'Class', 'Style', 'Color', 'Suspension', 'Ratchet', 'Material'],
-        saved: new Date().toISOString()
-      },
-      'Safety Glasses': {
-        attrs: ['Type', 'Lens Color', 'Frame Color', 'Coating', 'Style', 'UV Protection', 'Material'],
-        saved: new Date().toISOString()
-      },
-      'Coveralls': {
-        attrs: ['Type', 'Material', 'Color', 'Hood', 'Closure', 'Elastic', 'Application'],
-        saved: new Date().toISOString()
-      },
-      'Safety Footwear': {
-        attrs: ['Type', 'Toe Protection', 'Sole Material', 'Height', 'Color', 'Electrical Hazard', 'Waterproof'],
-        saved: new Date().toISOString()
-      }
+      'Gloves': { attrs: ['Type', 'Cut Level', 'Coating', 'Color', 'Cuff Style', 'Material', 'Application'], saved: new Date().toISOString() },
+      'Hard Hats': { attrs: ['Type', 'Class', 'Style', 'Color', 'Suspension', 'Ratchet', 'Material'], saved: new Date().toISOString() },
+      'Safety Glasses': { attrs: ['Type', 'Lens Color', 'Frame Color', 'Coating', 'Style', 'UV Protection', 'Material'], saved: new Date().toISOString() },
+      'Coveralls': { attrs: ['Type', 'Material', 'Color', 'Hood', 'Closure', 'Elastic', 'Application'], saved: new Date().toISOString() },
+      'Safety Footwear': { attrs: ['Type', 'Toe Protection', 'Sole Material', 'Height', 'Color', 'Electrical Hazard', 'Waterproof'], saved: new Date().toISOString() }
     };
     saveKB(defaultCategories);
   }
@@ -388,12 +374,7 @@ function getKBTaxonomy(cat){
 
 function saveKBEntry(cat, attrs, types){
   const kb = loadKB();
-  kb[cat.trim()] = { 
-    attrs, 
-    types: types || [], 
-    saved: new Date().toISOString(),
-    rules: kb[cat.trim()]?.rules || []  // Keep existing rules
-  };
+  kb[cat.trim()] = { attrs, types: types || [], saved: new Date().toISOString(), rules: kb[cat.trim()]?.rules || [] };
   saveKB(kb);
   renderKB();
   populateCatDatalist();
@@ -413,7 +394,6 @@ function renderKB(){
     const date = entry.saved ? new Date(entry.saved).toLocaleDateString() : '';
     const rules = entry.rules || [];
     const types = entry.types || [];
-    
     const rulesHtml = rules.length ? `
       <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
         <div style="font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Correction Rules</div>
@@ -423,7 +403,6 @@ function renderKB(){
           <span onclick="removeKBRule('${cat}',${i})" style="cursor:pointer;color:var(--muted);font-size:13px;flex-shrink:0">×</span>
         </div>`).join('')}
       </div>` : '';
-      
     const typesHtml = types.length ? `
       <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
         <div style="font-size:10px;font-family:var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Valid Types (${types.length})</div>
@@ -432,7 +411,6 @@ function renderKB(){
           ${types.length > 8 ? `<span style="font-size:10px;color:var(--muted);font-family:var(--mono)">+${types.length-8} more</span>` : ''}
         </div>
       </div>` : '';
-    
     return `<div class="kb-card">
       <div class="kb-card-header">
         <span class="kb-cat-name">${cat}</span>
@@ -458,40 +436,23 @@ function renderKB(){
 function populateCatDatalist(){
   const kb = loadKB();
   const cats = Object.keys(kb).sort();
-  
-  // Populate knowledge base datalists
   ['kb-cats-list','kb-cats-list2'].forEach(id=>{
     const dl = document.getElementById(id);
     if(dl) dl.innerHTML = cats.map(c=>`<option value="${c}">`).join('');
   });
-  
-  // Populate bulk category selector dropdown
   const bulkSelect = document.getElementById('bulk-category-select');
   if(bulkSelect){
-    // Clear and rebuild all options
     bulkSelect.innerHTML = '<option value="">Select a category from your knowledge base...</option>';
-    
-    // Add all categories from knowledge base
     cats.forEach(cat => {
       const option = document.createElement('option');
       option.value = cat;
       option.textContent = cat;
       bulkSelect.appendChild(option);
     });
-    
-    // Add change listener to enable/disable Apply button
     bulkSelect.onchange = updateApplyButton;
-    
-    // Update debug counter
     const debugSpan = document.getElementById('cat-count-debug');
-    if(debugSpan){
-      debugSpan.textContent = `(${cats.length} available)`;
-    }
-    
-    // Update Apply button state
+    if(debugSpan) debugSpan.textContent = `(${cats.length} available)`;
     updateApplyButton();
-    
-    console.log(`Populated bulk selector with ${cats.length} categories:`, cats);
   }
 }
 
@@ -545,15 +506,11 @@ function editKBEntry(cat){
   document.getElementById('kb-add-cat').value = cat;
   document.getElementById('kb-add-attrs').value = entry.attrs.join(', ');
   document.getElementById('add-kb-form').style.display='block';
-  // Remove old entry when saving
   document.getElementById('add-kb-form').dataset.editingCat = cat;
 }
 
-// ── KB Import/Export ──────────────────────────────────────────────────────────
 function downloadKBTemplate(){
   const wb = XLSX.utils.book_new();
-  
-  // Sheet 1: Categories and Attributes
   const categoriesData = [
     ['Category', 'Attributes (comma-separated)'],
     ['Gloves', 'Type,Cut Level,Coating,Color,Material,Cuff Style,Application'],
@@ -565,8 +522,6 @@ function downloadKBTemplate(){
   const ws1 = XLSX.utils.aoa_to_sheet(categoriesData);
   ws1['!cols'] = [{wch:20}, {wch:60}];
   XLSX.utils.book_append_sheet(wb, ws1, 'Categories');
-  
-  // Sheet 2: Correction Rules (optional)
   const rulesData = [
     ['Category', 'Correction Rule'],
     ['Gloves', 'Type = specific function like Welding Glove or Driver Glove not generic Glove'],
@@ -576,155 +531,95 @@ function downloadKBTemplate(){
   const ws2 = XLSX.utils.aoa_to_sheet(rulesData);
   ws2['!cols'] = [{wch:20}, {wch:80}];
   XLSX.utils.book_append_sheet(wb, ws2, 'Rules');
-  
   XLSX.writeFile(wb, 'ppetaxo_kb_template.xlsx');
 }
 
 function exportKB(){
   const kb = loadKB();
   const wb = XLSX.utils.book_new();
-  
-  // Sheet 1: Categories and Attributes
   const categoriesData = [['Category', 'Attributes (comma-separated)']];
-  Object.keys(kb).forEach(cat => {
-    categoriesData.push([cat, kb[cat].attrs.join(',')]);
-  });
+  Object.keys(kb).forEach(cat => { categoriesData.push([cat, kb[cat].attrs.join(',')]); });
   const ws1 = XLSX.utils.aoa_to_sheet(categoriesData);
   ws1['!cols'] = [{wch:20}, {wch:60}];
   XLSX.utils.book_append_sheet(wb, ws1, 'Categories');
-  
-  // Sheet 2: Correction Rules
   const rulesData = [['Category', 'Correction Rule']];
   Object.keys(kb).forEach(cat => {
     const rules = kb[cat].rules || [];
-    if(rules.length){
-      rules.forEach(rule => {
-        rulesData.push([cat, rule]);
-      });
-    }
+    if(rules.length){ rules.forEach(rule => { rulesData.push([cat, rule]); }); }
   });
   const ws2 = XLSX.utils.aoa_to_sheet(rulesData);
   ws2['!cols'] = [{wch:20}, {wch:80}];
   XLSX.utils.book_append_sheet(wb, ws2, 'Rules');
-  
-  // Sheet 3: Type Values
   const typesData = [['Category', 'Type']];
   Object.keys(kb).forEach(cat => {
     const types = kb[cat].types || [];
-    if(types.length){
-      types.forEach(type => {
-        typesData.push([cat, type]);
-      });
-    }
+    if(types.length){ types.forEach(type => { typesData.push([cat, type]); }); }
   });
   const ws3 = XLSX.utils.aoa_to_sheet(typesData);
   ws3['!cols'] = [{wch:25}, {wch:35}];
   XLSX.utils.book_append_sheet(wb, ws3, 'Types');
-  
   const date = new Date().toISOString().slice(0,10);
   XLSX.writeFile(wb, `ppetaxo_kb_export_${date}.xlsx`);
 }
 
 async function importKB(file){
   if(!file) return;
-  
   try {
     const reader = new FileReader();
     reader.onload = async (e) => {
       const wb = XLSX.read(e.target.result, {type:'array'});
-      
-      // Read Categories sheet
-      if(!wb.SheetNames.includes('Categories')){
-        alert('Excel file must have a "Categories" sheet'); return;
-      }
-      
+      if(!wb.SheetNames.includes('Categories')){ alert('Excel file must have a "Categories" sheet'); return; }
       const categoriesSheet = wb.Sheets['Categories'];
       const categoriesData = XLSX.utils.sheet_to_json(categoriesSheet, {defval:''});
-      
       const kb = loadKB();
       let imported = 0;
-      
-      // Process categories
       categoriesData.forEach(row => {
         const cat = row['Category']?.trim();
         const attrsStr = row['Attributes (comma-separated)']?.trim();
-        
         if(cat && attrsStr){
           const attrs = attrsStr.split(',').map(a=>a.trim()).filter(Boolean);
           if(attrs.length > 0){
-            kb[cat] = { 
-              attrs, 
-              types: [],  // Will be populated from Types sheet
-              saved: new Date().toISOString(),
-              rules: kb[cat]?.rules || []  // Keep existing rules
-            };
+            kb[cat] = { attrs, types: [], saved: new Date().toISOString(), rules: kb[cat]?.rules || [] };
             imported++;
           }
         }
       });
-      
-      // Read Types sheet if exists
       if(wb.SheetNames.includes('Types')){
         const typesSheet = wb.Sheets['Types'];
         const typesData = XLSX.utils.sheet_to_json(typesSheet, {defval:''});
-        
         typesData.forEach(row => {
           const cat = row['Category']?.trim();
           const type = row['Type']?.trim();
-          
           if(cat && type && kb[cat]){
             if(!kb[cat].types) kb[cat].types = [];
-            // Only add if type doesn't already exist
-            if(!kb[cat].types.includes(type)){
-              kb[cat].types.push(type);
-            }
+            if(!kb[cat].types.includes(type)) kb[cat].types.push(type);
           }
         });
       }
-      
-      // Read Rules sheet if exists
       if(wb.SheetNames.includes('Rules')){
         const rulesSheet = wb.Sheets['Rules'];
         const rulesData = XLSX.utils.sheet_to_json(rulesSheet, {defval:''});
-        
         rulesData.forEach(row => {
           const cat = row['Category']?.trim();
           const rule = row['Correction Rule']?.trim();
-          
           if(cat && rule && kb[cat]){
             if(!kb[cat].rules) kb[cat].rules = [];
-            // Only add if rule doesn't already exist
-            if(!kb[cat].rules.includes(rule)){
-              kb[cat].rules.push(rule);
-            }
+            if(!kb[cat].rules.includes(rule)) kb[cat].rules.push(rule);
           }
         });
       }
-      
       saveKB(kb);
       renderKB();
       populateCatDatalist();
-      
-      // Count types imported
       let totalTypes = 0;
-      Object.values(kb).forEach(entry => {
-        if(entry.types) totalTypes += entry.types.length;
-      });
-      
+      Object.values(kb).forEach(entry => { if(entry.types) totalTypes += entry.types.length; });
       alert(`Successfully imported:\n- ${imported} categories\n- ${totalTypes} type values\n- Correction rules integrated`);
-      
-      // Reset file input
       document.getElementById('kb-import-input').value = '';
     };
-    
     reader.readAsArrayBuffer(file);
-    
-  } catch(err) {
-    alert('Error reading Excel file: ' + err.message);
-  }
+  } catch(err) { alert('Error reading Excel file: ' + err.message); }
 }
 
-// ── API ───────────────────────────────────────────────────────────────────────
 function saveKey(){
   const k = document.getElementById('apiKeyInput').value.trim();
   if(!k) return;
@@ -748,11 +643,9 @@ async function callClaude(system, userMsg, maxTokens=1000){
   return raw.replace(/```json|```/g,'').trim();
 }
 
-// ── Taxonomy builder ──────────────────────────────────────────────────────────
 async function buildTaxonomy(cat, sampleText){
   const existing = getKBTaxonomy(cat);
   if(existing){ return existing; }
-  // Build from AI
   const system = `You are a PPE (Personal Protective Equipment) taxonomy expert for e-commerce and industrial distribution.
 Given a product category name and optional sample product text, return the optimal list of filter attributes for that category.
 Rules:
@@ -772,7 +665,6 @@ Example: ["Type","Cut Level","Coating","Color","Cuff Style","Material","Applicat
   return JSON.parse(raw);
 }
 
-// ── Taxonomy proposal UI ──────────────────────────────────────────────────────
 function renderAttrTags(attrs){
   currentAttrs = [...attrs];
   document.getElementById('attr-tag-row').innerHTML = attrs.map((a,i)=>
@@ -817,37 +709,27 @@ function approveAndProceed(){
   buildBulkTableHeaders();
   document.getElementById('bulk-controls').style.display='block';
   document.getElementById('bulk-summary').textContent = `${bulkRows.length} rows ready — ${currentAttrs.length} attributes`;
-  
-  // Ensure run button is enabled after approval
   document.getElementById('runBulkBtn').disabled = false;
   document.getElementById('runBulkBtn').style.opacity = '1';
-  
   renderBulkTable();
 }
 
-// ── Classification system prompt (dynamic) ────────────────────────────────────
 function buildSystemPrompt(cat, attrs){
-  // Load correction rules from knowledge base for this category
   const kb = loadKB();
   let rules = [];
   let specificTypes = [];
-  
   if(cat && cat !== 'Auto-detected'){
     const key = Object.keys(kb).find(k=>k.toLowerCase()===cat.trim().toLowerCase());
     if(key && kb[key].rules && kb[key].rules.length) rules = kb[key].rules;
     if(key && kb[key].types && kb[key].types.length) specificTypes = kb[key].types;
   }
-  
   const rulesSection = rules.length ?
     `\n\nCORRECTION RULES FOR ${(cat||'').toUpperCase()} — THESE OVERRIDE EVERYTHING ELSE:\n${rules.map((r,i)=>`${i+1}. ${r}`).join('\n')}` : '';
-
   const typesSection = specificTypes.length ?
     `\n\nVALID TYPE VALUES FOR ${(cat||'').toUpperCase()} — CHOOSE ONLY FROM THIS LIST:\n${specificTypes.map((t,i)=>`${i+1}. ${t}`).join('\n')}\nDO NOT create new Type values. Use EXACTLY these terms.` : '';
-
   const categoryInstruction = (cat && cat !== 'Auto-detected') ?
     `\n\n🎯 FIXED CATEGORY: This product MUST be classified as "${cat}". Do not change the category.` :
     'Category: auto-detect from product information';
-
   return `You are a PPE product attribute extraction engine for e-commerce catalog management.
 
 ${categoryInstruction}
@@ -887,11 +769,11 @@ Return ONLY valid JSON, no markdown:
 }`;
 }
 
-// ── Single classify ───────────────────────────────────────────────────────────
 async function classifySingle(){
   const partnum = document.getElementById('s-partnum').value.trim();
   const desc    = document.getElementById('s-desc').value.trim();
   const cat     = document.getElementById('s-category').value.trim();
+  const brand   = document.getElementById('s-brand').value.trim();
   const errDiv  = document.getElementById('single-error');
   errDiv.innerHTML='';
   if(!desc){ errDiv.innerHTML='<div class="error-msg">Enter a product name or description.</div>'; return; }
@@ -905,14 +787,14 @@ async function classifySingle(){
     const msg = `Item Number: ${partnum||'n/a'}\nProduct: ${desc}`;
     const raw = await callClaude(buildSystemPrompt(cat, attrs), msg, 800);
     const result = JSON.parse(raw);
-    renderSingleResult(result, attrs);
+    renderSingleResult(result, attrs, brand, {item_number:partnum, product_name:desc});
   } catch(e){
     errDiv.innerHTML=`<div class="error-msg">${e.message}</div>`;
   }
   btn.disabled=false; btn.textContent='Classify product';
 }
 
-function renderSingleResult(r, attrs){
+function renderSingleResult(r, attrs, brand, row){
   const conf  = r.confidence||'medium';
   const a     = r.attributes||{};
   const allAttrs = attrs || Object.keys(a);
@@ -921,6 +803,8 @@ function renderSingleResult(r, attrs){
     const v=a[k];
     return `<div class="attr-cell"><div class="attr-key">${k}</div><div class="attr-value ${v?'':'null-val'}">${v||'—'}</div></div>`;
   }).join('');
+  const pipeStr = buildPipeString(row||{}, r, allAttrs, brand||'');
+  const pipeHtml = pipeStr ? `<div class="pipe-preview"><div class="pipe-preview-label">Pipe-format output</div>${pipeStr}</div>` : '';
   document.getElementById('single-result').innerHTML=`
     <div class="result-box" style="margin-top:1.5rem">
       <div class="result-header">
@@ -930,10 +814,10 @@ function renderSingleResult(r, attrs){
       </div>
       <div class="result-reasoning">${r.reasoning||''}</div>
       <div class="attr-grid">${cards}</div>
+      ${pipeHtml}
     </div>`;
 }
 
-// ── File handling ─────────────────────────────────────────────────────────────
 function handleDrop(e){
   e.preventDefault();
   document.getElementById('dropZone').classList.remove('drag-over');
@@ -947,10 +831,7 @@ function processFile(file){
   document.getElementById('tax-proposal-box').style.display='none';
   document.getElementById('bulk-controls').style.display='none';
   document.getElementById('page-range-box').style.display='none';
-  
-  // Show category selector for all file types
   document.getElementById('bulk-category-selector').style.display='block';
-  
   if(file.name.toLowerCase().endsWith('.pdf')){
     processPdfFile(file);
     return;
@@ -974,7 +855,6 @@ function processFile(file){
     }
     bulkRows = rows.filter(r=>r.product_name||r.name||r.description||r.product_description)
       .map(r=>({...r, _pre_extracted: false}));
-    // Initialize bulkResults array for each row
     bulkResults = bulkRows.map(() => ({status:'pending', result:null}));
     await initBulkWithTaxonomy();
   };
@@ -982,56 +862,29 @@ function processFile(file){
   else reader.readAsArrayBuffer(file);
 }
 
-// ── Category application for bulk processing ──────────────────────────────────
 function applyCategoryTaxonomy(){
   const selectedCat = document.getElementById('bulk-category-select').value.trim();
-  if(!selectedCat){
-    alert('Please select a category first.');
-    return;
-  }
-  
-  // Load taxonomy from knowledge base
+  if(!selectedCat){ alert('Please select a category first.'); return; }
   const attrs = getKBTaxonomy(selectedCat);
-  if(!attrs || !attrs.length){
-    alert(`Category "${selectedCat}" not found in knowledge base. Please import your knowledge base first.`);
-    return;
-  }
-  
-  // Set current taxonomy
+  if(!attrs || !attrs.length){ alert(`Category "${selectedCat}" not found in knowledge base. Please import your knowledge base first.`); return; }
   currentCat = selectedCat;
   currentAttrs = attrs;
-  
-  console.log(`Applied category "${selectedCat}" with attributes:`, attrs);
-  
-  // Show taxonomy proposal with KB attributes
   showTaxonomyProposal(selectedCat, attrs, true);
-  
-  // Hide category selector since category is now applied
   document.getElementById('bulk-category-selector').style.display = 'none';
-  
-  // Ensure run button will be enabled after user approves
-  // (The approval step will enable it)
 }
 
-// ── Enable/disable Apply button based on selection ───────────────────────────
 function updateApplyButton(){
   const selectedCat = document.getElementById('bulk-category-select').value.trim();
   const applyBtn = document.getElementById('apply-category-btn');
   if(applyBtn){
     applyBtn.disabled = !selectedCat;
-    applyBtn.textContent = selectedCat ? 'Apply' : 'Apply';
+    applyBtn.textContent = 'Apply';
     applyBtn.style.opacity = selectedCat ? '1' : '0.5';
   }
 }
+
 async function initBulkWithTaxonomy(){
-  // Check if a category was already applied via the Apply button
-  if(currentCat && currentAttrs && currentAttrs.length){
-    console.log(`Using applied category "${currentCat}" with attributes:`, currentAttrs);
-    return; // Category already applied, taxonomy already set
-  }
-  
-  // Auto-generation mode: Build taxonomy from AI using sample of product names
-  console.log('Auto-generating taxonomy from PDF content...');
+  if(currentCat && currentAttrs && currentAttrs.length){ return; }
   document.getElementById('pdf-status-box').style.display='block';
   setPdfStep('pstep-tax','active');
   try {
@@ -1055,7 +908,6 @@ function showTaxonomyProposal(cat, attrs, fromKB){
   document.getElementById('tax-proposal-box').style.display='block';
 }
 
-// ── PDF processing ─────────────────────────────────────────────────────────────
 if(typeof pdfjsLib!=='undefined'){
   pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
@@ -1067,8 +919,7 @@ function setPdfStep(id,state){
   if(icon) icon.textContent=state==='done'?'✓':state==='active'?'►':state==='error'?'✕':'○';
 }
 
-// ── PDF global state ──────────────────────────────────────────────────────────
-let pdfDoc = null;  // holds loaded PDF document
+let pdfDoc = null;
 
 async function processPdfFile(file){
   if(!apiKey) apiKey=localStorage.getItem(API_KEY)||'';
@@ -1086,28 +937,21 @@ async function processPdfFile(file){
     const numPages = pdfDoc.numPages;
     setPdfStep('pstep-extract','done');
     document.getElementById('pdf-status-box').style.display='none';
-
-    // Show page range selector
     document.getElementById('pdf-page-count').textContent = numPages + ' pages total';
     document.getElementById('page-to').max = numPages;
     document.getElementById('page-from').max = numPages;
-
-    // Build dropdown — individual pages + groups of 5
     const sel = document.getElementById('page-range-select');
     sel.innerHTML = '<option value="">— Pick a range —</option>';
-    // Individual pages first
     for(let p=1; p<=numPages; p++){
       const opt = document.createElement('option');
       opt.value = p + ',' + p;
       opt.textContent = `Page ${p}`;
       sel.appendChild(opt);
     }
-    // Divider
     const div = document.createElement('option');
     div.disabled = true;
     div.textContent = '── Groups ──';
     sel.appendChild(div);
-    // Groups of 5
     for(let s=1; s<=numPages; s+=5){
       const e = Math.min(s+4, numPages);
       const opt = document.createElement('option');
@@ -1115,11 +959,8 @@ async function processPdfFile(file){
       opt.textContent = `Pages ${s} – ${e}`;
       sel.appendChild(opt);
     }
-    // Default to page 1
     sel.selectedIndex = 1;
     onPageRangeSelect();
-
-    // Show single extract button by default
     document.getElementById('run-single-btn').style.display='block';
     document.getElementById('queue-status').textContent='Add ranges to the queue or extract single range';
     pageQueue = [];
@@ -1132,8 +973,7 @@ async function processPdfFile(file){
   }
 }
 
-// ── Page queue ────────────────────────────────────────────────────────────────
-let pageQueue = [];  // [{from, to, status:'pending'|'done'|'running'|'error'}]
+let pageQueue = [];
 
 function onPageRangeSelect(){
   const sel = document.getElementById('page-range-select');
@@ -1150,26 +990,18 @@ function addToQueue(runNow){
   const toVal   = document.getElementById('page-to').value;
   const from = Math.max(1, parseInt(fromVal)||1);
   const maxPage = pdfDoc ? pdfDoc.numPages : 9999;
-  // If To is empty or 0, default to same as From (single page)
   const to = toVal ? Math.min(maxPage, parseInt(toVal)||from) : from;
   if(from > to){
-    // Auto-fix: set To = From
     document.getElementById('page-to').value = from;
     return addToQueue(runNow);
   }
-
   if(runNow){
-    // Run immediately without adding to queue
     pageQueue = [{from, to, status:'pending'}];
     runQueue();
     return;
   }
-
-  // Add to queue
   pageQueue.push({from, to, status:'pending'});
   renderQueue();
-
-  // Auto-advance selector to next range
   const sel = document.getElementById('page-range-select');
   for(let i=0; i<sel.options.length; i++){
     if(sel.options[i].value === from+','+to){
@@ -1193,9 +1025,7 @@ function renderQueue(){
   const runBtn = document.getElementById('run-queue-btn');
   const singleBtn = document.getElementById('run-single-btn');
   const status = document.getElementById('queue-status');
-
   const pending = pageQueue.filter(q=>q.status==='pending');
-
   if(!pageQueue.length){
     list.style.display='none';
     runBtn.style.display='none';
@@ -1203,7 +1033,6 @@ function renderQueue(){
     status.textContent='Add a page range above or extract single range now';
     return;
   }
-
   list.style.display='block';
   items.innerHTML = pageQueue.map((q,i) => {
     const color = q.status==='done'?'var(--success)':q.status==='running'?'var(--accent)':q.status==='error'?'var(--danger)':'var(--accent)';
@@ -1213,7 +1042,6 @@ function renderQueue(){
       ${q.status==='pending'?`<span onclick="removeFromQueue(${i})" style="cursor:pointer;color:var(--muted);margin-left:2px;font-size:13px">×</span>`:''}
     </span>`;
   }).join('');
-
   if(pending.length > 0){
     runBtn.style.display='block';
     runBtn.textContent = `Run queue (${pending.length} range${pending.length>1?'s':''})`;
@@ -1250,7 +1078,6 @@ async function extractPageRange(fromPage, toPage){
   if(!pdfDoc){ alert('No PDF loaded.'); return; }
   if(!apiKey) apiKey=localStorage.getItem(API_KEY)||'';
   if(!apiKey){ alert('No API key — paste key in header and click Save key.'); return; }
-  // If called without args, read from inputs
   if(fromPage===undefined){
     const fv = document.getElementById('page-from').value;
     const tv = document.getElementById('page-to').value;
@@ -1259,15 +1086,11 @@ async function extractPageRange(fromPage, toPage){
   }
   fromPage = Math.max(1, parseInt(fromPage)||1);
   toPage   = Math.min(pdfDoc.numPages, parseInt(toPage)||fromPage);
-  // Auto-fix if inverted
   if(fromPage > toPage) toPage = fromPage;
-
   document.getElementById('pdf-status-box').style.display='block';
   ['pstep-extract','pstep-ocr','pstep-tax','pstep-parse','pstep-load'].forEach(id=>setPdfStep(id,''));
   setPdfStep('pstep-extract','active');
-
   try {
-    // Try text extraction first on selected pages
     let extractedText = '';
     for(let p=fromPage; p<=toPage; p++){
       const page = await pdfDoc.getPage(p);
@@ -1277,8 +1100,6 @@ async function extractPageRange(fromPage, toPage){
     }
     extractedText = extractedText.trim();
     setPdfStep('pstep-extract','done');
-
-    // If text extraction got nothing useful — run OCR
     if(!extractedText || extractedText.replace(/\s/g,'').length < 50){
       setPdfStep('pstep-ocr','active');
       extractedText = await ocrPages(fromPage, toPage);
@@ -1286,14 +1107,10 @@ async function extractPageRange(fromPage, toPage){
     } else {
       setPdfStep('pstep-ocr','done');
     }
-
     if(!extractedText || extractedText.length < 20){
       throw new Error('Could not extract text from pages '+fromPage+'-'+toPage+'. Try different pages.');
     }
-
     pdfRawText = extractedText;
-
-    // Build taxonomy
     setPdfStep('pstep-tax','active');
     const cat = document.getElementById('b-category').value.trim();
     currentCat = cat;
@@ -1306,19 +1123,14 @@ async function extractPageRange(fromPage, toPage){
       currentAttrs = attrs;
     }
     setPdfStep('pstep-tax','done');
-
-    // Parse products
     setPdfStep('pstep-parse','active');
     pdfChunks=[];
     for(let i=0;i<pdfRawText.length;i+=4000) pdfChunks.push(pdfRawText.substring(i,i+4000));
     pdfChunkIdx=0; pdfAllProducts=[];
-
     const products = await parsePdfChunk(pdfChunks[0]);
     pdfChunkIdx=1;
     pdfAllProducts = products||[];
     setPdfStep('pstep-parse','done');
-
-    // Load rows — append to existing if any
     setPdfStep('pstep-load','active');
     const newRows = pdfAllProducts.map(p=>({
       item_number: p.item_number||'',
@@ -1332,26 +1144,21 @@ async function extractPageRange(fromPage, toPage){
       _cuff_style: p.cuff_style||'',
       _material: p.material||'',
       _application: p.application||'',
-      _pre_extracted: true
+      _pre_extracted: true,
+      ..._copyExtraFields(p)
     })).filter(r=>r.product_name);
     newRows.forEach(r=>{ bulkRows.push(r); bulkResults.push({status:'pending',result:null}); });
     setPdfStep('pstep-load','done');
-
-    // Show taxonomy proposal if first batch
     if(bulkRows.length === newRows.length){
       showTaxonomyProposal(cat||'Auto-detected', currentAttrs, !!existing);
     }
-
     buildBulkTableHeaders();
     renderBulkTable();
     document.getElementById('bulk-controls').style.display='block';
-
     const remaining = pdfChunks.length - pdfChunkIdx;
     let summary = `Pages ${fromPage}–${toPage}: ${newRows.length} products found (${bulkRows.length} total)`;
     if(remaining>0) summary += ` &nbsp;<button class="bulk-btn" style="padding:4px 10px;font-size:11px" onclick="processNextChunk()">Load more from these pages (chunk ${pdfChunkIdx+1}/${pdfChunks.length})</button>`;
     document.getElementById('bulk-summary').innerHTML = summary;
-
-    // Mark this range in dropdown
     const sel2 = document.getElementById('page-range-select');
     for(let i=0; i<sel2.options.length; i++){
       if(sel2.options[i].value === fromPage+','+toPage){
@@ -1360,7 +1167,6 @@ async function extractPageRange(fromPage, toPage){
         break;
       }
     }
-
   } catch(err){
     console.error('Extract error:',err);
     ['pstep-extract','pstep-ocr','pstep-tax','pstep-parse','pstep-load'].forEach(id=>{
@@ -1371,19 +1177,29 @@ async function extractPageRange(fromPage, toPage){
   }
 }
 
+// Copy any extra fields from PDF parse output into _underscore form so generic
+// attributes (gauge, palm, abrasion_level, frame_color, etc.) get exported too
+function _copyExtraFields(p){
+  const known = new Set(['item_number','product_name','description','extra_info','type','cut_level','coating','color','cuff_style','material','application']);
+  const extra = {};
+  Object.keys(p||{}).forEach(k=>{
+    if(known.has(k)) return;
+    extra['_' + k.toLowerCase().replace(/[\s\-\/]+/g,'_')] = p[k];
+  });
+  return extra;
+}
+
 async function ocrPages(fromPage, toPage){
-  // Render each page to canvas and send to OCR.space (free OCR API)
   let allText = '';
   for(let p=fromPage; p<=toPage; p++){
     const page = await pdfDoc.getPage(p);
-    const viewport = page.getViewport({scale:2.0});  // 2x scale for better OCR accuracy
+    const viewport = page.getViewport({scale:2.0});
     const canvas = document.createElement('canvas');
     canvas.width  = viewport.width;
     canvas.height = viewport.height;
     const ctx = canvas.getContext('2d');
     await page.render({canvasContext:ctx, viewport}).promise;
     const dataUrl = canvas.toDataURL('image/png');
-    // Remove data:image/png;base64, prefix
     const base64 = dataUrl.split(',')[1];
     try {
       const formData = new FormData();
@@ -1392,10 +1208,10 @@ async function ocrPages(fromPage, toPage){
       formData.append('isOverlayRequired', 'false');
       formData.append('detectOrientation', 'true');
       formData.append('scale', 'true');
-      formData.append('OCREngine', '2');  // Engine 2 better for tables
+      formData.append('OCREngine', '2');
       const res = await fetch('https://api.ocr.space/parse/image', {
         method:'POST',
-        headers:{'apikey':'helloworld'},  // free public key
+        headers:{'apikey':'helloworld'},
         body: formData
       });
       const data = await res.json();
@@ -1410,9 +1226,8 @@ async function ocrPages(fromPage, toPage){
 }
 
 async function parsePdfChunk(text){
-  const mode = 'individual';  // Always extract individual items only
+  const mode = 'individual';
   const modeInstr = `Extract ONLY individual single items — one type, one item number per row. Do NOT extract sets/kits with quantities.`;
-  // Load KB rules for current category
   const kbForParse = loadKB();
   let parseRules = [];
   if(currentCat){
@@ -1421,7 +1236,6 @@ async function parsePdfChunk(text){
   }
   const parseRulesSection = parseRules.length ?
     `\n\nCORRECTION RULES — THESE OVERRIDE EVERYTHING ELSE:\n${parseRules.map((r,i)=>`${i+1}. ${r}`).join('\n')}` : '';
-
   const system=`You are a PPE product data extraction engine for an industrial safety catalog.
 ${modeInstr}${parseRulesSection}
 
@@ -1461,6 +1275,7 @@ FIELDS TO EXTRACT (use what applies, leave others null):
 - cuff_style: for gloves only (e.g. "Knit Wrist", "Gauntlet", "Open Cuff")
 - material: primary material (e.g. "Leather", "Nylon", "Kevlar", "HPPE", "Cotton")
 - application: intended use (e.g. "General Work", "Welding", "Food Service", "Chemical Handling")
+- ANY OTHER ATTRIBUTE relevant to this product (e.g. gauge, palm, abrasion_level, frame_color, toe_protection, suspension, etc.) — use snake_case keys
 
 CRITICAL RULES:
 - ALWAYS extract the specific PPE function in the type field
@@ -1469,46 +1284,32 @@ CRITICAL RULES:
 - Return ONLY valid JSON array. If no products found return [].
 - NEVER use single quotes in JSON. Escape quotes properly inside strings.
 
-Output: [{"item_number":"34-C230","product_name":"Cut-Resistant Gloves","type":"Cut-Resistant Gloves","cut_level":"A2","coating":"Nitrile","color":"Gray","cuff_style":"Knit Wrist","material":"HPPE","application":"General Work"},...]`;
+Output: [{"item_number":"34-C230","product_name":"Cut-Resistant Gloves","type":"Cut-Resistant Gloves","cut_level":"A2","coating":"Nitrile","color":"Gray","cuff_style":"Knit Wrist","material":"HPPE","application":"General Work","gauge":"15","palm":"Latex","abrasion_level":"3"},...]`;
   const raw=await callClaude(system,`Extract products (${mode}):\n\n${text}`,4000);
-  // Clean and parse with multiple fallback strategies
   const cleanJSON = (str) => {
-    // Fix single-quoted strings (e.g. 'A2' -> "A2")
     let s = str;
-    // Replace single-quoted values: 'value' -> "value"
-    // But only when they appear as JSON values (after : or [)
     s = s.replace(/:\s*'([^']*)'/g, (m,v) => ': "' + v.replace(/"/g,'\\"') + '"');
     s = s.replace(/\[\s*'([^']*)'/g, (m,v) => '["' + v.replace(/"/g,'\\"') + '"');
-    // Fix unescaped inch symbols inside double-quoted strings
-    // e.g. "8"" -> "8\""
     s = s.replace(/"([^"]*)""/g, (m,v) => '"' + v + '\""');
-    // Fix trailing commas before ] or }
     s = s.replace(/,(\s*[\]}])/g, '$1');
     return s;
   };
   const tryParse = (str) => {
-    // Try raw first
     try{ return JSON.parse(str); } catch(e){}
-    // Try cleaned
     try{ return JSON.parse(cleanJSON(str)); } catch(e){ return null; }
   };
-  // Strategy 1: direct parse
   let parsed = tryParse(raw);
   if(parsed) return Array.isArray(parsed) ? parsed : [];
-  // Strategy 2: find JSON array in response
   const arrMatch = raw.match(/\[.*\]/s);
   if(arrMatch){ parsed = tryParse(arrMatch[0]); if(parsed) return parsed; }
-  // Strategy 3: recover truncated array
   const lastComma = raw.lastIndexOf('},');
   if(lastComma>0){ parsed = tryParse(raw.substring(0,lastComma+1)+']'); if(parsed) return parsed; }
-  // Strategy 4: single object
   const lastClose = raw.lastIndexOf('}');
   if(lastClose>0){
     const a = raw.substring(0,lastClose+1);
     parsed = tryParse(a.startsWith('[')?a+']':'['+a+']');
     if(parsed) return parsed;
   }
-  // Strategy 5: return empty array gracefully — never crash the queue
   console.warn('No products found in chunk, returning empty array. Raw:', raw.substring(0,200));
   return [];
 }
@@ -1528,7 +1329,13 @@ async function processNextChunk(){
     const newProds=await parsePdfChunk(pdfChunks[idx]);
     pdfChunkIdx++;
     if(newProds&&newProds.length) pdfAllProducts.push(...newProds);
-    const addedRows=(newProds||[]).map(p=>({item_number:p.item_number||'',product_name:p.product_name||'',_type:p.type||''})).filter(r=>r.product_name);
+    const addedRows=(newProds||[]).map(p=>({
+      item_number:p.item_number||'',
+      product_name:p.product_name||'',
+      _type:p.type||'',
+      _pre_extracted:true,
+      ..._copyExtraFields(p)
+    })).filter(r=>r.product_name);
     bulkRows.push(...addedRows);
     addedRows.forEach(()=>bulkResults.push({status:'pending',result:null}));
     renderBulkTable();
@@ -1545,7 +1352,6 @@ async function processNextChunk(){
   }
 }
 
-// ── Bulk table ────────────────────────────────────────────────────────────────
 function buildBulkTableHeaders(){
   const fixedCols=['#','Item Number','Product Name','Status','Category','Confidence'];
   const attrCols = currentAttrs;
@@ -1555,12 +1361,16 @@ function buildBulkTableHeaders(){
 
 function getName(row){ return row.product_name||row.name||row.description||row.product_description||''; }
 function getItemNum(row){ return row.item_number||row.part_number||row.sku||row.item_id||''; }
+function getRowBrand(row){ return (row.brand||row.Brand||row.manufacturer||row.Manufacturer||'').toString().trim(); }
 
 function buildRowHTML(row, i){
   const r=bulkResults[i];
   const dotClass={pending:'dot-pending',running:'dot-running',done:'dot-done',error:'dot-error'}[r.status]||'dot-pending';
   const res=r.result, a=res?.attributes||{};
-  const attrCells=currentAttrs.map(k=>`<td title="${a[k]||''}">${a[k]||''}</td>`).join('');
+  const attrCells=currentAttrs.map(k=>{
+    const val = a[k] || mapPreExtracted(row, k) || '';
+    return `<td title="${val}">${val}</td>`;
+  }).join('');
   return `<tr id="brow-${i}">
     <td style="color:var(--muted)">${i+1}</td>
     <td title="${getItemNum(row)}">${getItemNum(row)||'—'}</td>
@@ -1582,7 +1392,6 @@ function updateRow(i){
   if(tr) tr.outerHTML=buildRowHTML(bulkRows[i],i);
 }
 
-// ── Run bulk classification ────────────────────────────────────────────────────
 async function runBulk(){
   if(running) return;
   if(!apiKey) apiKey=localStorage.getItem(API_KEY)||'';
@@ -1590,13 +1399,9 @@ async function runBulk(){
   running=true;
   document.getElementById('runBulkBtn').disabled=true;
   document.getElementById('exportBtn').style.display='none';
-  
   const total=bulkRows.length;
   let done=0, errors=0;
-  
-  // Use current taxonomy (either applied from KB or auto-generated)
   const system = buildSystemPrompt(currentCat, currentAttrs);
-    
   for(let i=0;i<total;i++){
     if(bulkResults[i].status==='done'){ done++; continue; }
     bulkResults[i].status='running';
@@ -1606,23 +1411,10 @@ async function runBulk(){
     document.getElementById('progFill').style.width=((i/total)*100).toFixed(1)+'%';
     try {
       const row = bulkRows[i];
-      // If row was pre-extracted from PDF (has description block attributes),
-      // build the result directly without another API call
       if(row._pre_extracted && (row._type || row._cut_level || row._coating)){
         const preAttrs = {};
         currentAttrs.forEach(attr => {
-          const key = '_' + attr.toLowerCase().replace(/[\s\-\/]+/g,'_');
-          const altKey = '_' + attr.toLowerCase().replace(/[\s\-\/]+/g,'');
-          // Map common attribute names to our _field names
-          const attrMap = {
-            'type': row._type,
-            'cut level': row._cut_level, 'cut_level': row._cut_level,
-            'coating': row._coating, 'color': row._color,
-            'cuff style': row._cuff_style, 'cuff_style': row._cuff_style,
-            'material': row._material, 'application': row._application
-          };
-          const attrLower = attr.toLowerCase();
-          preAttrs[attr] = attrMap[attrLower] || row[key] || row[altKey] || null;
+          preAttrs[attr] = mapPreExtracted(row, attr) || null;
         });
         bulkResults[i]={status:'done',result:{
           category: currentCat||'Gloves',
@@ -1632,7 +1424,6 @@ async function runBulk(){
         }};
         done++;
       } else {
-        // Standard API classification for CSV/Excel rows or rows without pre-extracted data
         const extras = [
           row._type ? `Type: ${row._type}` : '',
           row._cut_level ? `Cut Level: ${row._cut_level}` : '',
@@ -1658,31 +1449,75 @@ async function runBulk(){
   document.getElementById('bulk-summary').textContent=`${done}/${total} classified · ${errors} errors`;
   document.getElementById('exportBtn').style.display='';
   document.getElementById('htmlBtn').style.display='';
+  document.getElementById('pipePreviewBtn').style.display='';
   document.getElementById('runBulkBtn').disabled=false;
   running=false;
 }
 
-// ── Export ────────────────────────────────────────────────────────────────────
+// ── PIPE STRING BUILDER ───────────────────────────────────────────────────────
+// Format: Brand:Radians|Type:Work Glove|Color:Hi Viz Green|...
+// Empty values are skipped entirely. Brand always leads if present.
+function buildPipeString(row, result, attrs, brandOverride){
+  const a = result?.attributes || {};
+  const pairs = [];
+  // Brand resolution order: override field > row.brand column > AI-extracted Brand attr
+  const brand = (brandOverride||'').trim()
+    || getRowBrand(row)
+    || (a.Brand||a.brand||'').toString().trim();
+  if(brand) pairs.push('Brand:' + brand);
+  // Walk taxonomy in order, skip empties, skip Brand if it's already added
+  attrs.forEach(attr => {
+    if(attr.toLowerCase() === 'brand') return;
+    const val = a[attr] || mapPreExtracted(row, attr);
+    if(val !== null && val !== undefined && String(val).trim() !== '') {
+      pairs.push(attr + ':' + String(val).trim());
+    }
+  });
+  return pairs.join('|');
+}
+
+function showPipePreview(){
+  const brand = (document.getElementById('b-brand')?.value || '').trim();
+  const sample = bulkRows.slice(0, 5).map((row, i) => {
+    const r = bulkResults[i];
+    if(r.status !== 'done') return null;
+    return buildPipeString(row, r.result, currentAttrs, brand);
+  }).filter(Boolean);
+  const box = document.getElementById('pipe-preview-box');
+  if(!sample.length){
+    box.innerHTML = '<div class="pipe-preview"><div class="pipe-preview-label">Pipe-format preview</div>No classified rows yet.</div>';
+  } else {
+    box.innerHTML = '<div class="pipe-preview"><div class="pipe-preview-label">Pipe-format preview (first ' + sample.length + ' rows)</div>'
+      + sample.map(s => `<div style="margin-bottom:6px">${s}</div>`).join('') + '</div>';
+  }
+  box.style.display = box.style.display === 'none' || !box.style.display ? 'block' : 'none';
+}
+
 function exportResults(){
-  const headers=['item_number','product_name','description','extra_info',...currentAttrs,'category','confidence','reasoning','html_table'];
+  const brandOverride = (document.getElementById('b-brand')?.value || '').trim();
+  const headers=['item_number','product_name','description','extra_info','brand',...currentAttrs,'category','confidence','reasoning','attributes_pipe','html_table'];
   const data=bulkRows.map((row,i)=>{
     const r=bulkResults[i],res=r.result,a=res?.attributes||{};
-    const htmlTable=buildProductHTML(row,res,currentAttrs);
+    const htmlTable=buildProductHTML(row,res,currentAttrs,brandOverride);
+    const pipeStr=buildPipeString(row,res,currentAttrs,brandOverride);
+    const rowBrand = brandOverride || getRowBrand(row) || a.Brand || a.brand || '';
     return[
       getItemNum(row),
       getName(row),
       row.description||'',
       row.extra_info||'',
+      rowBrand,
       ...currentAttrs.map(k=>a[k]||mapPreExtracted(row,k)||''),
       res?.category||'',
       res?.confidence||'',
       res?.reasoning||'',
+      pipeStr,
       htmlTable
     ];
   });
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet([headers,...data]);
-  ws['!cols']=headers.map(()=>({wch:20}));
+  ws['!cols']=headers.map(h => h==='attributes_pipe' ? {wch:80} : h==='html_table' ? {wch:60} : {wch:20});
   XLSX.utils.book_append_sheet(wb,ws,'Classified Products');
   XLSX.writeFile(wb,`ppetaxo_${currentCat||'results'}_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
@@ -1690,30 +1525,31 @@ function exportResults(){
 function downloadTemplate(){
   const wb=XLSX.utils.book_new();
   const ws=XLSX.utils.aoa_to_sheet([
-    ['item_number','product_name','description','extra_info','category'],
-    ['PIP-34-C230','MaxiFlex Cut-Resistant Work Gloves','Level A2 cut protection','Nitrile coated palm','Gloves'],
-    ['MCR-ST1-21','Safety Glasses with Side Shields','Clear polycarbonate lens','ANSI Z87.1 certified','Safety Glasses'],
-    ['','','','','']
+    ['item_number','product_name','description','extra_info','brand','category'],
+    ['PIP-34-C230','MaxiFlex Cut-Resistant Work Gloves','Level A2 cut protection','Nitrile coated palm','PIP','Gloves'],
+    ['MCR-ST1-21','Safety Glasses with Side Shields','Clear polycarbonate lens','ANSI Z87.1 certified','MCR','Safety Glasses'],
+    ['','','','','','']
   ]);
-  ws['!cols']=[{wch:20},{wch:50},{wch:30},{wch:25},{wch:20}];
+  ws['!cols']=[{wch:20},{wch:50},{wch:30},{wch:25},{wch:18},{wch:20}];
   XLSX.utils.book_append_sheet(wb,ws,'Import Template');
   XLSX.writeFile(wb,'ppetaxo_template.xlsx');
 }
 
-function buildProductHTML(row, result, attrs){
+function buildProductHTML(row, result, attrs, brandOverride){
   const itemNum = getItemNum(row);
   const name = getName(row);
   const desc = row.description || '';
   const extra = row.extra_info || '';
   const a = result?.attributes || {};
-  // Use attrs in exact same order as the table columns shown on screen
-  // Add item number, product name, description, extra_info as first rows
+  const brand = (brandOverride||'').trim() || getRowBrand(row) || (a.Brand||a.brand||'').toString().trim();
   const allRows = [
     `<tr><th style="text-align:left;padding:6px 12px;background:#f5f5f5;border:1px solid #ddd;white-space:nowrap;font-weight:600;width:160px">Item Number</th><td style="padding:6px 12px;border:1px solid #ddd">${itemNum||'—'}</td></tr>`,
     `<tr><th style="text-align:left;padding:6px 12px;background:#f5f5f5;border:1px solid #ddd;white-space:nowrap;font-weight:600;width:160px">Product Name</th><td style="padding:6px 12px;border:1px solid #ddd">${name||'—'}</td></tr>`,
+    brand ? `<tr><th style="text-align:left;padding:6px 12px;background:#f5f5f5;border:1px solid #ddd;white-space:nowrap;font-weight:600;width:160px">Brand</th><td style="padding:6px 12px;border:1px solid #ddd">${brand}</td></tr>` : '',
     desc ? `<tr><th style="text-align:left;padding:6px 12px;background:#f5f5f5;border:1px solid #ddd;white-space:nowrap;font-weight:600;width:160px">Description</th><td style="padding:6px 12px;border:1px solid #ddd">${desc}</td></tr>` : '',
     extra ? `<tr><th style="text-align:left;padding:6px 12px;background:#f5f5f5;border:1px solid #ddd;white-space:nowrap;font-weight:600;width:160px">Extra Info</th><td style="padding:6px 12px;border:1px solid #ddd">${extra}</td></tr>` : '',
     ...attrs.map(attr => {
+      if(attr.toLowerCase() === 'brand') return '';
       const val = a[attr] || mapPreExtracted(row, attr);
       if(!val) return '';
       return `<tr><th style="text-align:left;padding:6px 12px;background:#f5f5f5;border:1px solid #ddd;white-space:nowrap;font-weight:600;width:160px">${attr}</th><td style="padding:6px 12px;border:1px solid #ddd">${val}</td></tr>`;
@@ -1725,37 +1561,38 @@ function buildProductHTML(row, result, attrs){
 </table>`;
 }
 
+// Generic pre-extracted attribute lookup. Handles original glove fields plus
+// any attribute populated by _copyExtraFields (gauge, palm, abrasion_level, etc.)
 function mapPreExtracted(row, attr){
   if(!row._pre_extracted) return null;
   const a = attr.toLowerCase();
+  // Hardcoded map for backward compat with original glove fields
   const map = {
     'type':row._type,'cut level':row._cut_level,'coating':row._coating,
     'color':row._color,'cuff style':row._cuff_style,'material':row._material,
     'application':row._application
   };
-  return map[a] || null;
+  if(map[a]) return map[a];
+  // Generic fallback: try _underscore_normalized variations
+  const k1 = '_' + a.replace(/[\s\-\/]+/g,'_');
+  const k2 = '_' + a.replace(/[\s\-\/]+/g,'');
+  return row[k1] || row[k2] || null;
 }
 
 function generateHTML(){
-  // Build HTML tables for all classified rows
+  const brand = (document.getElementById('b-brand')?.value || '').trim();
   const tables = bulkRows.map((row, i) => {
     const r = bulkResults[i];
     if(r.status !== 'done') return null;
-    return buildProductHTML(row, r.result, currentAttrs);
+    return buildProductHTML(row, r.result, currentAttrs, brand);
   }).filter(Boolean);
-
   if(!tables.length){ alert('No classified rows to generate HTML for.'); return; }
-
   const fullHTML = tables.join('\n');
-
-  // Store for export
   window._htmlTables = {};
   bulkRows.forEach((row, i) => {
     const r = bulkResults[i];
-    if(r.status === 'done') window._htmlTables[i] = buildProductHTML(row, r.result, currentAttrs);
+    if(r.status === 'done') window._htmlTables[i] = buildProductHTML(row, r.result, currentAttrs, brand);
   });
-
-  // Show inline modal — no popup needed
   let modal = document.getElementById('html-modal');
   if(modal) modal.remove();
   modal = document.createElement('div');
@@ -1780,10 +1617,11 @@ function generateHTML(){
 }
 
 function copyAllHTML(){
+  const brand = (document.getElementById('b-brand')?.value || '').trim();
   const tables = bulkRows.map((row, i) => {
     const r = bulkResults[i];
     if(r.status !== 'done') return null;
-    return buildProductHTML(row, r.result, currentAttrs);
+    return buildProductHTML(row, r.result, currentAttrs, brand);
   }).filter(Boolean);
   const fullHTML = tables.join('\n');
   const status = document.getElementById('html-copy-status');
@@ -1798,10 +1636,11 @@ function copyAllHTML(){
 }
 
 function downloadHTMLFile(){
+  const brand = (document.getElementById('b-brand')?.value || '').trim();
   const tables = bulkRows.map((row, i) => {
     const r = bulkResults[i];
     if(r.status !== 'done') return null;
-    return buildProductHTML(row, r.result, currentAttrs);
+    return buildProductHTML(row, r.result, currentAttrs, brand);
   }).filter(Boolean);
   const fullHTML = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PPE Product Tables</title></head><body>'+tables.join('\n')+'</body></html>';
   const a=document.createElement('a');
@@ -1811,18 +1650,15 @@ function downloadHTMLFile(){
 
 function resetBulk(){
   bulkRows=[]; bulkResults=[]; running=false; currentAttrs=[]; pdfChunks=[]; pdfChunkIdx=0; pdfAllProducts=[];
-  currentCat = ''; // Reset current category
+  currentCat = '';
   document.getElementById('bulk-controls').style.display='none';
   document.getElementById('pdf-status-box').style.display='none';
   document.getElementById('tax-proposal-box').style.display='none';
   document.getElementById('page-range-box').style.display='none';
   document.getElementById('bulk-category-selector').style.display='none';
   document.getElementById('fileInput').value='';
-  
-  // Reset run button state
   document.getElementById('runBulkBtn').disabled = false;
   document.getElementById('runBulkBtn').style.opacity = '1';
-  
   pdfDoc=null;
   pageQueue=[];
   document.getElementById('bulkBody').innerHTML='';
@@ -1830,9 +1666,12 @@ function resetBulk(){
   document.getElementById('prog-label').textContent='Ready';
   document.getElementById('prog-count').textContent='';
   document.getElementById('exportBtn').style.display='none';
+  const pipeBox = document.getElementById('pipe-preview-box');
+  if(pipeBox){ pipeBox.innerHTML=''; pipeBox.style.display='none'; }
+  const pipeBtn = document.getElementById('pipePreviewBtn');
+  if(pipeBtn) pipeBtn.style.display='none';
 }
 
-// ── Tab switching ─────────────────────────────────────────────────────────────
 function switchTab(name){
   const tabs=['single','bulk','kb'];
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -1843,14 +1682,13 @@ function switchTab(name){
   if(name==='kb') renderKB();
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────────
 window.onload=()=>{
   if(apiKey){
     document.getElementById('apiKeyInput').value=apiKey;
     document.getElementById('apiStatus').textContent='key saved';
     document.getElementById('apiStatus').className='api-status ok';
   }
-  initKB();  // Initialize with default PPE categories
+  initKB();
   renderKB();
   populateCatDatalist();
 };

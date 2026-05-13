@@ -13,6 +13,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .header{border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;background:var(--bg);z-index:100}
 .logo{font-family:var(--mono);font-size:15px;font-weight:500;color:var(--accent);letter-spacing:-.02em}
 .logo span{color:var(--muted)}
+.header-right{display:flex;align-items:center;gap:12px}
 .api-area{display:flex;align-items:center;gap:8px}
 .api-area input{font-family:var(--mono);font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;width:240px;outline:none}
 .api-area input:focus{border-color:var(--accent)}
@@ -20,6 +21,17 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
 .api-save:hover{background:var(--accent2);color:var(--bg)}
 .api-status{font-size:11px;font-family:var(--mono)}
 .api-status.ok{color:var(--success)}.api-status.no{color:var(--muted)}
+/* Backup buttons (added v2) */
+.btn-bk{display:inline-flex;align-items:center;gap:4px;padding:6px 11px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--mono);letter-spacing:.02em;border:1px solid;background:transparent;transition:background .15s}
+.btn-bk-export{color:var(--success);border-color:var(--success)}
+.btn-bk-export:hover{background:rgba(39,174,96,.12)}
+.btn-bk-import{color:var(--accent);border-color:var(--accent)}
+.btn-bk-import:hover{background:rgba(231,76,60,.10)}
+.backup-banner{background:rgba(243,156,18,.08);border:1px solid var(--warn);border-left:3px solid var(--warn);color:var(--warn);padding:10px 16px;border-radius:8px;font-size:12px;margin:1rem 2rem 0 2rem;font-family:var(--mono);display:flex;align-items:center;gap:10px}
+.backup-banner code{background:rgba(243,156,18,.15);padding:1px 5px;border-radius:3px;font-size:11px}
+.backup-banner .spacer{flex:1}
+.backup-banner button{background:var(--warn);color:var(--bg);border:none;padding:5px 12px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--mono);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.backup-banner button:hover{background:var(--accent2)}
 .main{max-width:1100px;margin:0 auto;padding:2rem}
 .tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:2rem}
 .tab{padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;transition:all .15s;font-family:var(--mono);letter-spacing:.02em}
@@ -120,12 +132,18 @@ input[type=file]{display:none}
 
 <div class="header">
   <div class="logo">PPE<span>Taxo</span></div>
-  <div class="api-area">
-    <input type="password" id="apiKeyInput" placeholder="sk-ant-..."/>
-    <button class="api-save" onclick="saveKey()">Save key</button>
-    <span class="api-status no" id="apiStatus">no key</span>
+  <div class="header-right">
+    <button class="btn-bk btn-bk-export" onclick="exportBackup()" title="Download backup JSON of your knowledge base">⬇ Backup</button>
+    <button class="btn-bk btn-bk-import" onclick="importBackup()" title="Restore knowledge base from backup JSON">⬆ Restore</button>
+    <div class="api-area">
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-..."/>
+      <button class="api-save" onclick="saveKey()">Save key</button>
+      <span class="api-status no" id="apiStatus">no key</span>
+    </div>
   </div>
 </div>
+
+<div id="banner-host"></div>
 
 <div class="main">
   <div class="tabs">
@@ -309,7 +327,7 @@ input[type=file]{display:none}
   <!-- KNOWLEDGE BASE -->
   <div class="tab-panel" id="tab-kb">
     <div class="hint-box">
-      The knowledge base is <strong>permanent</strong> — it never gets deleted when the app is updated. Every taxonomy you approve is stored here. When you work on a category again, the app loads it instantly instead of re-building from scratch.
+      The knowledge base is <strong>permanent</strong> — it never gets deleted when the app is updated. Every taxonomy you approve is stored here. When you work on a category again, the app loads it instantly instead of re-building from scratch. <strong>Use the ⬇ Backup button in the header to download a snapshot — keep one in your Drive folder.</strong>
     </div>
     <div style="display:flex;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center">
       <button class="bulk-btn primary" onclick="showAddKB()">+ Add manually</button>
@@ -338,6 +356,8 @@ input[type=file]{display:none}
 <script>
 const KB_KEY   = 'ppetaxo_kb_v1';
 const API_KEY  = 'ppetaxo_key';
+const BACKUP_META_KEY = 'ppetaxo_backup_meta_v1';
+const BACKUP_REMINDER_DAYS = 7;
 
 let apiKey   = localStorage.getItem(API_KEY) || '';
 let bulkRows = [], bulkResults = [], running = false;
@@ -365,6 +385,159 @@ function initKB(){
   }
 }
 
+/* ============ BACKUP / RESTORE ============ */
+function getBackupMeta(){
+  try {
+    const raw = localStorage.getItem(BACKUP_META_KEY);
+    return raw ? JSON.parse(raw) : { lastBackupAt: null };
+  } catch(e){ return { lastBackupAt: null }; }
+}
+function setBackupMeta(meta){
+  try { localStorage.setItem(BACKUP_META_KEY, JSON.stringify(meta)); }
+  catch(e){ console.warn('Could not save backup meta:',e); }
+}
+
+function exportBackup(){
+  const kbRaw = localStorage.getItem(KB_KEY);
+  if(!kbRaw){
+    alert('Knowledge base is empty — nothing to back up yet.');
+    return;
+  }
+  let parsed;
+  try { parsed = JSON.parse(kbRaw); }
+  catch(e){ alert('Stored knowledge base is corrupted, aborting backup.'); return; }
+
+  const catCount = Object.keys(parsed).length;
+  let typeCount = 0, ruleCount = 0;
+  Object.values(parsed).forEach(entry => {
+    if(entry.types) typeCount += entry.types.length;
+    if(entry.rules) ruleCount += entry.rules.length;
+  });
+
+  const backup = {
+    tool: 'modonix-ppetaxo',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    stats: { categories: catCount, types: typeCount, rules: ruleCount },
+    data: parsed
+  };
+
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `modonix-ppetaxo-backup-${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  setBackupMeta({ lastBackupAt: new Date().toISOString() });
+  renderBackupBanner();
+  // Brief inline status — don't use alert() so it doesn't block the workflow
+  const status = document.getElementById('apiStatus');
+  if(status){
+    const prev = { text: status.textContent, cls: status.className };
+    status.textContent = `✓ ${catCount} cats backed up`;
+    status.className = 'api-status ok';
+    setTimeout(()=>{ status.textContent = prev.text; status.className = prev.cls; }, 2500);
+  }
+}
+
+function importBackup(){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/json,.json';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let parsed;
+      try { parsed = JSON.parse(reader.result); }
+      catch(err){ alert('Could not parse JSON: ' + err.message); return; }
+
+      let kbData;
+      if(parsed && parsed.tool === 'modonix-ppetaxo' && parsed.data){
+        kbData = parsed.data;
+      } else if(parsed && typeof parsed === 'object' && !Array.isArray(parsed)){
+        // Raw KB dump (legacy or hand-edited) — every value must look like {attrs:[...]}
+        const looksLikeKB = Object.values(parsed).every(v => v && typeof v === 'object' && Array.isArray(v.attrs));
+        if(looksLikeKB) kbData = parsed;
+        else { alert('Not a valid PPETaxo backup file.'); return; }
+      } else {
+        alert('Not a valid PPETaxo backup file.');
+        return;
+      }
+
+      const newCatCount = Object.keys(kbData).length;
+      const currentCatCount = Object.keys(loadKB()).length;
+
+      let newTypeCount = 0, newRuleCount = 0;
+      Object.values(kbData).forEach(entry => {
+        if(entry.types) newTypeCount += entry.types.length;
+        if(entry.rules) newRuleCount += entry.rules.length;
+      });
+
+      const msg = currentCatCount > 0
+        ? `This will REPLACE your current knowledge base (${currentCatCount} categories) with the backup (${newCatCount} categories, ${newTypeCount} types, ${newRuleCount} rules). Current data will be lost. Continue?`
+        : `Restore ${newCatCount} categories, ${newTypeCount} types, and ${newRuleCount} rules from backup?`;
+
+      if(!confirm(msg)) return;
+
+      try {
+        localStorage.setItem(KB_KEY, JSON.stringify(kbData));
+        renderKB();
+        populateCatDatalist();
+        renderBackupBanner();
+        alert(`Restored ${newCatCount} categories, ${newTypeCount} types, ${newRuleCount} rules from backup.`);
+      } catch(err){
+        alert('Restore failed: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function renderBackupBanner(){
+  const host = document.getElementById('banner-host');
+  if(!host) return;
+  host.innerHTML = '';
+
+  // Only nag if there's data worth backing up
+  const kb = loadKB();
+  const catCount = Object.keys(kb).length;
+  if(catCount === 0) return;
+
+  // Don't nag if the only categories are the 5 defaults with no customization
+  const DEFAULT_CATS = new Set(['Gloves','Hard Hats','Safety Glasses','Coveralls','Safety Footwear']);
+  const hasCustomData = Object.keys(kb).some(cat => {
+    if(!DEFAULT_CATS.has(cat)) return true;
+    const e = kb[cat];
+    if(e.types && e.types.length > 0) return true;
+    if(e.rules && e.rules.length > 0) return true;
+    return false;
+  });
+  if(!hasCustomData) return;
+
+  const meta = getBackupMeta();
+  const last = meta.lastBackupAt;
+  const daysSince = last ? Math.floor((Date.now() - new Date(last).getTime()) / (1000*60*60*24)) : null;
+  const overdue = !last || daysSince >= BACKUP_REMINDER_DAYS;
+  if(!overdue) return;
+
+  const msg = !last
+    ? 'You have custom KB data but no backup yet. Click ⬇ Backup in the header.'
+    : `It's been ${daysSince} day${daysSince === 1 ? '' : 's'} since your last KB backup.`;
+
+  const banner = document.createElement('div');
+  banner.className = 'backup-banner';
+  banner.innerHTML = `<span>⚠</span><span><strong>BACKUP REMINDER:</strong> ${msg} Drop the file in your <code>Modonix/Backups/PPETaxo/</code> folder.</span><span class="spacer"></span><button onclick="exportBackup()">⬇ Backup Now</button>`;
+  host.appendChild(banner);
+}
+
 function getKBTaxonomy(cat){
   const kb = loadKB();
   const key = cat.trim().toLowerCase();
@@ -378,6 +551,7 @@ function saveKBEntry(cat, attrs, types){
   saveKB(kb);
   renderKB();
   populateCatDatalist();
+  renderBackupBanner();
 }
 
 function renderKB(){
@@ -475,6 +649,7 @@ function deleteKBEntry(cat){
   saveKB(kb);
   renderKB();
   populateCatDatalist();
+  renderBackupBanner();
 }
 
 function addKBRule(cat){
@@ -490,6 +665,7 @@ function addKBRule(cat){
   saveKB(kb);
   inp.value = '';
   renderKB();
+  renderBackupBanner();
 }
 
 function removeKBRule(cat, idx){
@@ -611,6 +787,7 @@ async function importKB(file){
       saveKB(kb);
       renderKB();
       populateCatDatalist();
+      renderBackupBanner();
       let totalTypes = 0;
       Object.values(kb).forEach(entry => { if(entry.types) totalTypes += entry.types.length; });
       alert(`Successfully imported:\n- ${imported} categories\n- ${totalTypes} type values\n- Correction rules integrated`);
@@ -1691,6 +1868,7 @@ window.onload=()=>{
   initKB();
   renderKB();
   populateCatDatalist();
+  renderBackupBanner();
 };
 </script>
 </body>
